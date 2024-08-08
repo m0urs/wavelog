@@ -61,7 +61,7 @@
                 	$actstation=$this->stations->find_active() ?? '';
                 	echo "var activeStationId = '".$actstation."';\n";
                 	$profile_info = $this->stations->profile($actstation)->row();
-                	echo "var activeStationTXPower = '".xss_clean($profile_info->station_power)."';\n";
+                	echo "var activeStationTXPower = '".xss_clean($profile_info->station_power ?? 0)."';\n";
                 	echo "var activeStationOP = '".xss_clean($this->session->userdata('operator_callsign'))."';\n";
 		}
                 ?>
@@ -132,6 +132,8 @@
 							<a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#"><?= __("Analytics"); ?></a>
 							<ul class="dropdown-menu header-dropdown">
 								<li><a class="dropdown-item" href="<?php echo site_url('statistics'); ?>" title="Statistics"><i class="fas fa-chart-area"></i> <?= __("Statistics"); ?></a></li>
+								<div class="dropdown-divider"></div>
+								<li><a class="dropdown-item" href="<?php echo site_url('statistics/qslstats'); ?>" title="QSL Statistics"><i class="fas fa-chart-area"></i> <?= __("QSL Statistics"); ?></a></li>
 								<div class="dropdown-divider"></div>
 								<li><a class="dropdown-item" href="<?php echo site_url('gridmap'); ?>" title="Gridmap"><i class="fas fa-globe-europe"></i> <?= __("Gridsquare Map"); ?></a></li>
 								<div class="dropdown-divider"></div>
@@ -249,6 +251,12 @@
 								<li><a class="dropdown-item" href="<?php echo site_url('bandmap/list'); ?>" title="Bandmap"><i class="fa fa-id-card"></i> <?= __("Bandmap"); ?></a></li>
 								<div class="dropdown-divider"></div>
 								<li><a class="dropdown-item" href="<?php echo site_url('sattimers'); ?>" title="SAT Timers"><i class="fas fa-satellite"></i> <?= __("SAT Timers"); ?></a></li>
+								<?php if (ENVIRONMENT == "development") { ?>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item" href="<?php echo site_url('satellite/flightpath'); ?>" title="Manage Satellites"><i class="fas fa-satellite"></i> <?= __("Satellite Flightpath"); ?> <span class="badge text-bg-danger">Beta</span></a>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item" href="<?php echo site_url('satellite/pass'); ?>" title="Search for satellite passes"><i class="fas fa-satellite"></i> <?= __("Satellite Pass"); ?> <span class="badge text-bg-danger">Beta</span></a>
+								<?php } ?>
 							</ul>
 						</li>
 					<?php } ?>
@@ -402,7 +410,7 @@
 								if (!($this->config->item('disable_oqrs') ?? false)) {
 									$oqrs_requests = $this->oqrs_model->oqrs_requests($location_list);
 									?>
-								<li><a class="dropdown-item" href="<?php echo site_url('oqrs/requests'); ?>" title="OQRS Requests"><i class="fa fa-id-card"></i> <?= __("OQRS Requests"); ?> 
+								<li><a class="dropdown-item" href="<?php echo site_url('oqrs/requests'); ?>" title="OQRS Requests"><i class="fa fa-id-card"></i> <?= __("OQRS Requests"); ?>
 									<?php if ($oqrs_requests > 0) {
 									echo "<span class=\"badge text-bg-light\">" . $oqrs_requests . "</span>";
 									} ?></a></li>

@@ -36,7 +36,9 @@ class Update extends CI_Controller {
 	public function dxcc_entities() {
 
         // Load the cty file
-        $this->load->library('Paths');
+        if(!$this->load->is_loaded('Paths')) {
+        	$this->load->library('Paths');
+		}
 		$xml_data = simplexml_load_file($this->paths->make_update_path("cty.xml"));
 
 		//$xml_data->entities->entity->count();
@@ -87,7 +89,9 @@ class Update extends CI_Controller {
 	public function dxcc_exceptions() {
 
         // Load the cty file
-        $this->load->library('Paths');
+        if(!$this->load->is_loaded('Paths')) {
+        	$this->load->library('Paths');
+		}
 		$xml_data = simplexml_load_file($this->paths->make_update_path("cty.xml"));
 
 		$count = 0;
@@ -129,7 +133,9 @@ class Update extends CI_Controller {
 	public function dxcc_prefixes() {
 		
 		// Load the cty file
-        $this->load->library('Paths');
+        if(!$this->load->is_loaded('Paths')) {
+        	$this->load->library('Paths');
+		}
 		$xml_data = simplexml_load_file($this->paths->make_update_path("cty.xml"));
 
 		$count = 0;
@@ -169,7 +175,9 @@ class Update extends CI_Controller {
 	// Updates the DXCC & Exceptions from the Club Log Cty.xml file.
 	public function dxcc() {
 
-        $this->load->library('Paths');
+		if(!$this->load->is_loaded('Paths')) {
+        	$this->load->library('Paths');
+		}
 
         // set the last run in cron table for the correct cron id
         $this->load->model('cron_model');
@@ -192,7 +200,7 @@ class Update extends CI_Controller {
         if ($gz === FALSE) {
             $this->update_status("FAILED: Could not download from clublog.org");
             log_message('error', 'FAILED: Could not download exceptions from clublog.org');
-            return;
+            exit();
         }
 
         $data = "";
@@ -203,7 +211,7 @@ class Update extends CI_Controller {
 
         if (file_put_contents($this->paths->make_update_path("cty.xml"), $data) === FALSE) {
             $this->update_status("FAILED: Could not write to cty.xml file");
-            return;
+            exit();
         }
 
         // Clear the tables, ready for new data
@@ -220,21 +228,25 @@ class Update extends CI_Controller {
         $this->db->trans_complete();
 
         $this->update_status(__("DONE"));
+
+		echo 'success';
 	}
 
 	public function update_status($done=""){
 
-        $this->load->library('Paths');
+        if(!$this->load->is_loaded('Paths')) {
+        	$this->load->library('Paths');
+		}
 
 		if ($done != "Downloading file"){
 			// Check that everything is done?
 			if ($done == ""){
-				$done = "Updating...";
+				$done = __("Updating...");
 			}
 			$html = $done."<br/>";
-			$html .= "Dxcc Entities: ".$this->db->count_all('dxcc_entities')."<br/>";
-			$html .= "Dxcc Exceptions: ".$this->db->count_all('dxcc_exceptions')."<br/>";
-			$html .= "Dxcc Prefixes: ".$this->db->count_all('dxcc_prefixes')."<br/>";
+			$html .= __("Dxcc Entities:")." ".$this->db->count_all('dxcc_entities')."<br/>";
+			$html .= __("Dxcc Exceptions:")." ".$this->db->count_all('dxcc_exceptions')."<br/>";
+			$html .= __("Dxcc Prefixes:")." ".$this->db->count_all('dxcc_prefixes')."<br/>";
 		} else {
 			$html = $done."....<br/>";
 		}
@@ -308,20 +320,7 @@ class Update extends CI_Controller {
     }
 
     public function download_lotw_users() {
-        $contents = file_get_contents('https://lotw.arrl.org/lotw-user-activity.csv', true);
-
-        if($contents === FALSE) {
-            echo "Something went wrong with fetching the LoTW users file.";
-        } else {
-            $file = './updates/lotw_users.csv';
-
-            if (file_put_contents($file, $contents) !== FALSE) {     // Save our content to the file.
-                echo "LoTW User Data Saved.";
-            } else {
-                echo "FAILED: Could not write to LoTW users file";
-            }
-        }
-
+        $this->lotw_users();
     }
 
     public function lotw_users() {
@@ -330,19 +329,6 @@ class Update extends CI_Controller {
         $result = $this->Update_model->lotw_users();
         echo $result;
 
-    }
-
-    public function lotw_check() {
-        $f = fopen('./updates/lotw_users.csv', "r");
-        $result = false;
-        while ($row = fgetcsv($f)) {
-            if ($row[0] == '4W7EST/MM') {
-                $result = $row[0];
-                echo "found";
-                break;
-            }
-        }
-        fclose($f);
     }
 
     /*
@@ -385,6 +371,61 @@ class Update extends CI_Controller {
         echo $result;
         
     }
+
+	public function update_tle() {
+		$mtime = microtime();
+        $mtime = explode(" ",$mtime);
+        $mtime = $mtime[1] + $mtime[0];
+        $starttime = $mtime;
+
+		$url = 'https://www.amsat.org/tle/dailytle.txt';
+		$curl = curl_init($url);
+
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
+		$response = curl_exec($curl);
+
+		$count = 0;
+
+		if ($response === false) {
+			echo 'Error: ' . curl_error($curl);
+		} else {
+			$this->db->empty_table("tle");
+			// Split the response into an array of lines
+			$lines = explode("\n", $response);
+
+			$satname = '';
+			$tleline1 = '';
+			$tleline2 = '';
+			// Process each line
+			for ($i = 0; $i < count($lines); $i += 3) {
+				$count++;
+				// Check if there are at least three lines remaining
+				if (isset($lines[$i], $lines[$i + 1], $lines[$i + 2])) {
+					// Get the three lines
+					$satname = $lines[$i];
+					$tleline1 = $lines[$i + 1];
+					$tleline2 = $lines[$i + 2];
+					$sql = "INSERT INTO tle (satelliteid, tle) select id, ? from satellite where name = ? or exportname = ?";
+					$this->db->query($sql,array($tleline1."\n".$tleline2,$satname,$satname));
+				}
+			}
+		}
+
+		curl_close($curl);
+
+        $mtime = microtime();
+        $mtime = explode(" ",$mtime);
+        $mtime = $mtime[1] + $mtime[0];
+        $endtime = $mtime;
+        $totaltime = ($endtime - $starttime);
+        echo "This page was created in ".$totaltime." seconds <br />";
+        echo "Records inserted: " . $count . " <br/>";
+        $datetime = new DateTime("now", new DateTimeZone('UTC'));
+        $datetime = $datetime->format('Ymd h:i');
+        $this->optionslib->update('tle_update', $datetime , 'no');
+	}
 
 }
 ?>
