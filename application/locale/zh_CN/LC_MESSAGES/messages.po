@@ -7,8 +7,8 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-08-12 16:02+0000\n"
-"PO-Revision-Date: 2024-08-12 15:29+0000\n"
+"POT-Creation-Date: 2024-08-14 18:08+0000\n"
+"PO-Revision-Date: 2024-08-14 08:35+0000\n"
 "Last-Translator: Karuru <karuru@aerodefense.co.uk>\n"
 "Language-Team: Chinese (Simplified) <https://translate.wavelog.org/projects/"
 "wavelog/main-translation/zh_Hans/>\n"
@@ -34,7 +34,7 @@ msgstr "激活的网格"
 #: application/controllers/Awards.php:942
 #: application/controllers/Gridmap.php:31
 #: application/controllers/Visitor.php:374
-#: application/views/activators/index.php:101
+#: application/views/activators/index.php:97
 #: application/views/visitor/layout/header.php:68
 msgid "Gridsquares"
 msgstr "网格"
@@ -402,11 +402,11 @@ msgstr "ITU 分区"
 msgid "Backup"
 msgstr "备份"
 
-#: application/controllers/Backup.php:48
+#: application/controllers/Backup.php:50
 msgid "ADIF - Backup"
 msgstr "ADIF - 备份"
 
-#: application/controllers/Backup.php:80
+#: application/controllers/Backup.php:84
 msgid "Notes - Backup"
 msgstr "笔记 - 备份"
 
@@ -1353,7 +1353,7 @@ msgstr "模式"
 msgid "Edit Mode"
 msgstr "编辑模式"
 
-#: application/controllers/Notes.php:19
+#: application/controllers/Notes.php:18
 #: application/views/interface_assets/header.php:128
 #: application/views/notes/add.php:9 application/views/notes/edit.php:10
 #: application/views/notes/main.php:5 application/views/notes/main.php:8
@@ -1365,16 +1365,16 @@ msgstr "编辑模式"
 msgid "Notes"
 msgstr "笔记"
 
-#: application/controllers/Notes.php:38
+#: application/controllers/Notes.php:37
 msgid "Add Notes"
 msgstr "添加笔记"
 
-#: application/controllers/Notes.php:58
+#: application/controllers/Notes.php:64
 #: application/views/oqrs/showrequests.php:88
 msgid "Note"
 msgstr "注解"
 
-#: application/controllers/Notes.php:79 application/views/notes/edit.php:7
+#: application/controllers/Notes.php:92 application/views/notes/edit.php:7
 #: application/views/notes/view.php:19
 msgid "Edit Note"
 msgstr "编辑笔记"
@@ -2131,31 +2131,31 @@ msgstr "HRDlog：无 QSO 可供上传，台站呼号为： "
 msgid "HRDlog: No station profiles with HRDlog Credentials found."
 msgstr "HRDlog：无台站配置信息。"
 
-#: application/models/Logbook_model.php:4148
+#: application/models/Logbook_model.php:4143
 msgid "QSO could not be matched"
 msgstr "QSO 无法匹配"
 
-#: application/models/Logbook_model.php:4154
+#: application/models/Logbook_model.php:4149
 msgid "confirmed by LoTW/Clublog/eQSL/Contest"
 msgstr "已经通过 LoTW/Clublog/eQSL/竞赛 确认"
 
-#: application/models/Logbook_model.php:4159
+#: application/models/Logbook_model.php:4154
 msgid "confirmed by award manager"
 msgstr "已经通过奖项管理员确认"
 
-#: application/models/Logbook_model.php:4162
+#: application/models/Logbook_model.php:4157
 msgid "confirmed by cross-check of DCL data"
 msgstr "已经通过 DCL 数据交叉检查确认"
 
-#: application/models/Logbook_model.php:4165
+#: application/models/Logbook_model.php:4160
 msgid "confirmation pending"
 msgstr "等待确认"
 
-#: application/models/Logbook_model.php:4168
+#: application/models/Logbook_model.php:4163
 msgid "unconfirmed"
 msgstr "未确认"
 
-#: application/models/Logbook_model.php:4171
+#: application/models/Logbook_model.php:4166
 msgid "unknown"
 msgstr "未知"
 
@@ -2293,7 +2293,7 @@ msgstr "差异"
 #: application/views/timeplotter/index.php:27
 #: application/views/timeplotter/index.php:47
 #: application/views/user/edit.php:633
-#: application/views/visitor/layout/footer.php:169
+#: application/views/visitor/layout/footer.php:170
 msgid "All"
 msgstr "所有"
 
@@ -2371,7 +2371,7 @@ msgstr "显示"
 #: application/views/sattimers/index.php:38
 #: application/views/statistics/index.php:112
 msgid "Satellite"
-msgstr "卫星（Satellite）"
+msgstr "卫星"
 
 #: application/views/activated_gridmap/index.php:30
 #: application/views/awards/dxcc/index.php:147
@@ -2451,7 +2451,7 @@ msgstr "都"
 msgid "Minimum Count"
 msgstr "最低数量"
 
-#: application/views/activators/index.php:77
+#: application/views/activators/index.php:73
 #: application/views/awards/counties/details.php:27
 #: application/views/awards/counties/index.php:46
 #: application/views/awards/cq/index.php:196
@@ -2475,7 +2475,7 @@ msgstr "最低数量"
 msgid "Nothing found!"
 msgstr "未找到！"
 
-#: application/views/activators/index.php:99
+#: application/views/activators/index.php:95
 #: application/views/adif/import.php:66 application/views/adif/import.php:172
 #: application/views/adif/import.php:217
 #: application/views/awards/pota/index.php:34
@@ -2513,11 +2513,11 @@ msgstr "未找到！"
 msgid "Callsign"
 msgstr "呼号"
 
-#: application/views/activators/index.php:100
+#: application/views/activators/index.php:96
 msgid "Count"
 msgstr "数量"
 
-#: application/views/activators/index.php:102
+#: application/views/activators/index.php:98
 #: application/views/timeline/index.php:121
 #: application/views/timeline/index.php:153
 #: application/views/timeline/index.php:178
@@ -2527,7 +2527,7 @@ msgstr "数量"
 msgid "Show QSO's"
 msgstr "显示 QSO"
 
-#: application/views/activators/index.php:103
+#: application/views/activators/index.php:99
 msgid "Show Map"
 msgstr "显示地图"
 
@@ -5169,7 +5169,7 @@ msgstr "您没有日志本。单击%s执行此操作："
 #, php-format
 msgid "You have had %d QSO today"
 msgid_plural "You have had %d QSOs today"
-msgstr[0] "你今天有%d个QSO"
+msgstr[0] "你今天有 %d 个QSO"
 
 #: application/views/dashboard/index.php:97
 msgid "You have made no QSOs today; time to turn on the radio!"
@@ -6144,7 +6144,7 @@ msgstr "未通联"
 
 #: application/views/interface_assets/footer.php:44
 #: application/views/qso/index.php:601
-#: application/views/visitor/layout/footer.php:244
+#: application/views/visitor/layout/footer.php:245
 msgid "Clear"
 msgstr "清除"
 
@@ -10682,7 +10682,7 @@ msgstr "标记 已请求卡片(直邮)"
 msgid "eQSL picture"
 msgstr "eQSL 图片"
 
-#: application/views/visitor/layout/footer.php:240
+#: application/views/visitor/layout/footer.php:241
 msgid "CSV"
 msgstr "CSV"
 

@@ -8,7 +8,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-08-12 16:02+0000\n"
+"POT-Creation-Date: 2024-08-14 18:08+0000\n"
 "PO-Revision-Date: 2024-08-12 13:55+0000\n"
 "Last-Translator: Michael Skolsky <r1blh@yandex.ru>\n"
 "Language-Team: Russian <https://translate.wavelog.org/projects/wavelog/main-"
@@ -36,7 +36,7 @@ msgstr "Карта активированных квадратов"
 #: application/controllers/Awards.php:942
 #: application/controllers/Gridmap.php:31
 #: application/controllers/Visitor.php:374
-#: application/views/activators/index.php:101
+#: application/views/activators/index.php:97
 #: application/views/visitor/layout/header.php:68
 msgid "Gridsquares"
 msgstr "Квадраты"
@@ -404,11 +404,11 @@ msgstr "Зоны ITU"
 msgid "Backup"
 msgstr "Резервное копирование"
 
-#: application/controllers/Backup.php:48
+#: application/controllers/Backup.php:50
 msgid "ADIF - Backup"
 msgstr "Резервное копирование ADIF"
 
-#: application/controllers/Backup.php:80
+#: application/controllers/Backup.php:84
 msgid "Notes - Backup"
 msgstr "Резервное копирование заметок"
 
@@ -1365,7 +1365,7 @@ msgstr "Виды модуляции"
 msgid "Edit Mode"
 msgstr "Редактировать"
 
-#: application/controllers/Notes.php:19
+#: application/controllers/Notes.php:18
 #: application/views/interface_assets/header.php:128
 #: application/views/notes/add.php:9 application/views/notes/edit.php:10
 #: application/views/notes/main.php:5 application/views/notes/main.php:8
@@ -1377,16 +1377,16 @@ msgstr "Редактировать"
 msgid "Notes"
 msgstr "Заметки"
 
-#: application/controllers/Notes.php:38
+#: application/controllers/Notes.php:37
 msgid "Add Notes"
 msgstr "Добавить"
 
-#: application/controllers/Notes.php:58
+#: application/controllers/Notes.php:64
 #: application/views/oqrs/showrequests.php:88
 msgid "Note"
 msgstr "Заметка"
 
-#: application/controllers/Notes.php:79 application/views/notes/edit.php:7
+#: application/controllers/Notes.php:92 application/views/notes/edit.php:7
 #: application/views/notes/view.php:19
 msgid "Edit Note"
 msgstr "Редактировать"
@@ -2160,31 +2160,31 @@ msgstr "HRDlog: на найдены QSO для загруки для позыв�
 msgid "HRDlog: No station profiles with HRDlog Credentials found."
 msgstr "HRDlog: не найдены профили QTH с данными входя на HRDlog."
 
-#: application/models/Logbook_model.php:4148
+#: application/models/Logbook_model.php:4143
 msgid "QSO could not be matched"
 msgstr "QSO не может быть сопоставлено"
 
-#: application/models/Logbook_model.php:4154
+#: application/models/Logbook_model.php:4149
 msgid "confirmed by LoTW/Clublog/eQSL/Contest"
 msgstr "подтверждено LoTW/Clublog/eQSL/Contest"
 
-#: application/models/Logbook_model.php:4159
+#: application/models/Logbook_model.php:4154
 msgid "confirmed by award manager"
 msgstr "подтверждено менеджером диплома"
 
-#: application/models/Logbook_model.php:4162
+#: application/models/Logbook_model.php:4157
 msgid "confirmed by cross-check of DCL data"
 msgstr "подтверждено кросс-проверкой с данными DCL"
 
-#: application/models/Logbook_model.php:4165
+#: application/models/Logbook_model.php:4160
 msgid "confirmation pending"
 msgstr "подтверждение ожидается"
 
-#: application/models/Logbook_model.php:4168
+#: application/models/Logbook_model.php:4163
 msgid "unconfirmed"
 msgstr "не подтверждено"
 
-#: application/models/Logbook_model.php:4171
+#: application/models/Logbook_model.php:4166
 msgid "unknown"
 msgstr "неизвестно"
 
@@ -2322,7 +2322,7 @@ msgstr "Разница"
 #: application/views/timeplotter/index.php:27
 #: application/views/timeplotter/index.php:47
 #: application/views/user/edit.php:633
-#: application/views/visitor/layout/footer.php:169
+#: application/views/visitor/layout/footer.php:170
 msgid "All"
 msgstr "Все"
 
@@ -2480,7 +2480,7 @@ msgstr "Обе"
 msgid "Minimum Count"
 msgstr "Минимальное количество"
 
-#: application/views/activators/index.php:77
+#: application/views/activators/index.php:73
 #: application/views/awards/counties/details.php:27
 #: application/views/awards/counties/index.php:46
 #: application/views/awards/cq/index.php:196
@@ -2504,7 +2504,7 @@ msgstr "Минимальное количество"
 msgid "Nothing found!"
 msgstr "Не найдено!"
 
-#: application/views/activators/index.php:99
+#: application/views/activators/index.php:95
 #: application/views/adif/import.php:66 application/views/adif/import.php:172
 #: application/views/adif/import.php:217
 #: application/views/awards/pota/index.php:34
@@ -2542,11 +2542,11 @@ msgstr "Не найдено!"
 msgid "Callsign"
 msgstr "Позывной"
 
-#: application/views/activators/index.php:100
+#: application/views/activators/index.php:96
 msgid "Count"
 msgstr "Счётчик"
 
-#: application/views/activators/index.php:102
+#: application/views/activators/index.php:98
 #: application/views/timeline/index.php:121
 #: application/views/timeline/index.php:153
 #: application/views/timeline/index.php:178
@@ -2556,7 +2556,7 @@ msgstr "Счётчик"
 msgid "Show QSO's"
 msgstr "Показать QSO"
 
-#: application/views/activators/index.php:103
+#: application/views/activators/index.php:99
 msgid "Show Map"
 msgstr "Показать карту"
 
@@ -6336,7 +6336,7 @@ msgstr "Не сработано"
 
 #: application/views/interface_assets/footer.php:44
 #: application/views/qso/index.php:601
-#: application/views/visitor/layout/footer.php:244
+#: application/views/visitor/layout/footer.php:245
 msgid "Clear"
 msgstr "Очистить"
 
@@ -11043,7 +11043,7 @@ msgstr "Отметить запрос QSL-карточки (напрямую)"
 msgid "eQSL picture"
 msgstr "изображение eQSL-карточки"
 
-#: application/views/visitor/layout/footer.php:240
+#: application/views/visitor/layout/footer.php:241
 msgid "CSV"
 msgstr "CSV"
 
