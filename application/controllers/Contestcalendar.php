@@ -12,7 +12,7 @@ class Contestcalendar extends CI_Controller {
 	public function index() {
 		$this->load->model('user_model');
 		if (!$this->user_model->authorize(2)) {
-			$this->session->set_flashdata('notice', 'You\'re not allowed to do that!');
+			$this->session->set_flashdata('error', __("You're not allowed to do that!"));
 			redirect('dashboard');
 		}
 
@@ -144,8 +144,8 @@ class Contestcalendar extends CI_Controller {
 				continue;
 			}
 
-			$start = date('Y-m-d', strtotime($contest['start']->format('Y-m-d')));
-			$end = date('Y-m-d', strtotime($contest['end']->format('Y-m-d')));
+			$start = $contest['start'] == '' ? '' : date('Y-m-d', strtotime($contest['start']->format('Y-m-d')));
+			$end = $contest['end'] == '' ? '' : date('Y-m-d', strtotime($contest['end']->format('Y-m-d')));
 
 			if ($start <= $this->today && $end >= $this->today) {
 				$contestsToday[] = $contest;
@@ -175,8 +175,8 @@ class Contestcalendar extends CI_Controller {
 				continue;
 			}
 
-			$start = date('Y-m-d', strtotime($contest['start']->format('Y-m-d')));
-			$end = date('Y-m-d', strtotime($contest['end']->format('Y-m-d')));
+			$start = $contest['start'] == '' ? '' : date('Y-m-d', strtotime($contest['start']->format('Y-m-d')));
+			$end = $contest['end'] == '' ? '' : date('Y-m-d', strtotime($contest['end']->format('Y-m-d')));
 
 			if ($start >= $nextFriday && $start <= $nextSunday && $start >= $this->today) {
 				$contestsNextWeekend[] = $contest;
