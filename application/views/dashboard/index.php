@@ -83,6 +83,22 @@ function echo_table_col($row, $name) {
 		</div>
 	<?php } ?>
 
+	<?php if (($linkedCount > 0) && $active_not_linked) { ?>
+		<div class="alert alert-danger" role="alert">
+		<?= sprintf(
+				_pgettext("Dashboard Warning", "Your active Station Location isn't linked to your Logbook. Click %shere%s to do it."), '<u><a href="' . site_url('stationsetup') . '">', '</a></u>'
+			); ?>
+		</div>
+	<?php } ?>
+
+	<?php if ($linkedCount == 0) { ?>
+		<div class="alert alert-danger" role="alert">
+		<?= sprintf(
+				_pgettext("Dashboard Warning", "You have no station linked to your Logbook. Click %shere%s to do it."), '<u><a href="' . site_url('stationsetup') . '">', '</a></u>'
+			); ?>
+		</div>
+	<?php } ?>
+
 	<?php if($this->optionslib->get_option('dashboard_banner') != "false") { ?>
 	<?php if($todays_qsos >= 1) { ?>
 		<div class="alert alert-success" role="alert" style="margin-top: 1rem;">
@@ -178,9 +194,9 @@ function echo_table_col($row, $name) {
 
 					?>
 
-					<td><?php $timestamp = strtotime($row->COL_TIME_ON); echo date($custom_date_format, $timestamp); ?></td>
+					<td><?php $timestamp = strtotime($row->COL_TIME_ON ?? '1970-01-01 00:00:00'); echo date($custom_date_format, $timestamp); ?></td>
 					<?php if(($this->config->item('use_auth') && ($this->session->userdata('user_type') >= 2)) || $this->config->item('use_auth') === FALSE || ($this->config->item('show_time'))) { ?>
-					<td><?php $timestamp = strtotime($row->COL_TIME_ON); echo date('H:i', $timestamp); ?></td>
+					<td><?php $timestamp = strtotime($row->COL_TIME_ON ?? '1970-01-01 00:00:00'); echo date('H:i', $timestamp); ?></td>
 
 					<?php } ?>
 					<td>
