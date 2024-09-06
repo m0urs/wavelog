@@ -171,6 +171,8 @@
 										<div class="dropdown-divider"></div>
 										<li><a class="dropdown-item" href="<?php echo site_url('awards/vucc'); ?>"><i class="fas fa-trophy"></i> <?= __("VUCC"); ?></a></li>
 										<div class="dropdown-divider"></div>
+										<li><a class="dropdown-item" href="<?php echo site_url('awards/wac'); ?>"><i class="fas fa-trophy"></i> <?= __("Worked All Continents (WAC)"); ?></a></li>
+										<div class="dropdown-divider"></div>
 										<li><a class="dropdown-item" href="<?php echo site_url('awards/wwff'); ?>"><i class="fas fa-trophy"></i> <?= __("WWFF"); ?></a></li>
 									</ul>
 								</li>
@@ -416,7 +418,7 @@
 									?>
 								<li><a class="dropdown-item" href="<?php echo site_url('oqrs/requests'); ?>" title="OQRS Requests"><i class="fa fa-id-card"></i> <?= __("OQRS Requests"); ?>
 									<?php if ($oqrs_requests > 0) {
-									echo "<span class=\"badge text-bg-light\">" . $oqrs_requests . "</span>";
+									echo "<span id=\"oqrs_requests\" class=\"badge text-bg-light\">" . $oqrs_requests . "</span>";
 									} ?></a></li>
 								<?php } ?>
 								<li><a class="dropdown-item" href="<?php echo site_url('qslprint'); ?>" title="<?= __("QSL Queue"); ?>"><i class="fas fa-print"></i> <?= __("QSL Queue"); ?></a></li>
