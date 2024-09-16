@@ -21,7 +21,7 @@ class Logbook_model extends CI_Model {
     $callsign = str_replace('Ø', '0', $this->input->post('callsign'));
     // Join date+time
     $datetime = date("Y-m-d",strtotime($this->input->post('start_date')))." ". $this->input->post('start_time');
-    if ($this->input->post('end_time') != null) {
+    if ( ($this->input->post('end_time') ?? '') != '') {
         $datetime_off = date("Y-m-d",strtotime($this->input->post('start_date')))." ". $this->input->post('end_time');
         // if time off < time on, and time off is on 00:xx >> add 1 day (concidering start and end are between 23:00 and 00:59) //
         $_tmp_datetime_off = strtotime($datetime_off);
@@ -1079,10 +1079,10 @@ class Logbook_model extends CI_Model {
    * Function marks QSOs as uploaded to QRZ.
    * $primarykey is the unique id for that QSO in the logbook
    */
-    function mark_qrz_qsos_sent($primarykey) {
+    function mark_qrz_qsos_sent($primarykey, $state = 'Y') {
         $data = array(
          'COL_QRZCOM_QSO_UPLOAD_DATE' => date("Y-m-d H:i:s", strtotime("now")),
-         'COL_QRZCOM_QSO_UPLOAD_STATUS' => 'Y',
+         'COL_QRZCOM_QSO_UPLOAD_STATUS' => $state,
         );
 
         $this->db->where('COL_PRIMARY_KEY', $primarykey);
@@ -4002,7 +4002,7 @@ function lotw_last_qsl_date($user_id) {
 			  'COL_AWARD_GRANTED' => (!empty($record['award_granted'])) ? $record['award_granted'] : '',
 			  'COL_AWARD_SUBMITTED' => (!empty($record['award_submitted'])) ? $record['award_submitted'] : '',
 			  'COL_BAND' => $band,
-			  'COL_BAND_RX' => $band_rx,
+			  'COL_BAND_RX' => $band_rx ?? '',
 			  'COL_BIOGRAPHY' => (!empty($record['biography'])) ? $record['biography'] : '',
 			  'COL_CALL' => (!empty($record['call'])) ? strtoupper($record['call']) : '',
 			  'COL_CHECK' => (!empty($record['check'])) ? $record['check'] : '',
@@ -4486,6 +4486,7 @@ function lotw_last_qsl_date($user_id) {
 						    $row['adif'] = 0;
 						    $row['cont'] = '';
 						    $row['entity'] = '- NONE -';
+						    $row['ituz'] = 0;
 						    $row['cqz'] = 0;
 						    $row['long'] = '0';
 						    $row['lat'] = '0';
@@ -4501,12 +4502,13 @@ function lotw_last_qsl_date($user_id) {
 		    $dxcc_array=[];
 
 		    // Fetch all candidates in one shot instead of looping
-		    $dxcc_result=$this->db->query("SELECT *
+		    $dxcc_result=$this->db->query("SELECT `dxcc_prefixes`.`record`, `dxcc_prefixes`.`call`, `dxcc_prefixes`.`entity`, `dxcc_prefixes`.`adif`, `dxcc_prefixes`.`cqz`, `dxcc_entities`.`ituz`, `dxcc_prefixes`.`cont`, `dxcc_prefixes`.`long`, `dxcc_prefixes`.`lat`, `dxcc_prefixes`.`start`, `dxcc_prefixes`.`end`
 			    FROM `dxcc_prefixes`
+			    LEFT JOIN `dxcc_entities` ON `dxcc_entities`.`adif` = `dxcc_prefixes`.`adif`
 			    WHERE ? like concat(`call`,'%')
-			    and `call` like ?
-			    AND (`start` <= ?  OR start is null)
-			    AND (`end` >= ?  OR end is null) order by length(`call`) desc limit 1",array($call,substr($call,0,1).'%',$date,$date));
+			    and `dxcc_prefixes`.`call` like ?
+			    AND (`dxcc_prefixes`.`start` <= ?  OR `dxcc_prefixes`.`start` is null)
+			    AND (`dxcc_prefixes`.`end` >= ?  OR `dxcc_prefixes`.`end` is null) order by length(`call`) desc limit 1",array($call,substr($call,0,1).'%',$date,$date));
 
 		    foreach($dxcc_result->result_array() as $row){
 			    $dxcc_array[$row['call']]=$row;
@@ -4526,6 +4528,7 @@ function lotw_last_qsl_date($user_id) {
 	    return array(
 			'adif' => 0,
 			'cqz' => 0,
+			'ituz' => 0,
 			'long' => '',
 			'lat' => '',
 			'entity' => 'None',
