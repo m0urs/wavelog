@@ -3293,7 +3293,7 @@ function check_if_callsign_worked_in_logbook($callsign, $StationLocationsArray =
     }
 
   /* Used to check if the qso is already in the database */
-    function import_check($datetime, $callsign, $band, $mode, $station_callsign, $station_id = null) {
+    function import_check($datetime, $callsign, $band, $mode, $station_callsign, $station_ids = null) {
 	    $binding=[];
 	    $mode=$this->get_main_mode_from_mode($mode);
 
@@ -3313,9 +3313,8 @@ function check_if_callsign_worked_in_logbook($callsign, $StationLocationsArray =
 	    $binding[]=$mode;
 
 
-	    if(isset($station_id) && $station_id > 0) {
-		    $sql.=' AND station_id=?';
-		    $binding[]=$station_id;
+	    if(isset($station_ids)) {
+		    $sql.=' AND station_id IN ('.$station_ids.')';
 	    }
 
 	    $query = $this->db->query($sql, $binding);
@@ -3610,7 +3609,7 @@ function lotw_last_qsl_date($user_id) {
 	  } else {
 		  if (isset($record['freq'])){
 			  if($freq != "0") {
-				  $band = $this->frequency->GetBand($freq);
+				  $band = $this->frequency->GetBand($freq) ?? '';
 			  }
 		  }
 	  }
@@ -3628,10 +3627,15 @@ function lotw_last_qsl_date($user_id) {
 	  }
 
 	  if (isset($record['mode'])) {
-		  $input_mode = $record['mode'];
-	  } else {
-		  $input_mode = '';
-	  }
+		if (strlen($record['mode']) <= 12) { // COL_MODE is VARCHAR(12)
+			$input_mode = $record['mode'];
+		} else {
+			log_message('error', 'ADIF Import: Mode too long: '.$record['mode'].' for QSO with call: '.$record['call'].' at date '.$record['qso_date']);
+			$input_mode = '';
+		}
+	} else {
+		$input_mode = '';
+	}
 
 	  $mode = $this->get_main_mode_if_submode($input_mode);
 	  if ($mode == null) {
@@ -3659,7 +3663,7 @@ function lotw_last_qsl_date($user_id) {
 			  $this->db->where('COL_CALL', $record['call']);
 		  }
 		  $this->db->where("DATE_FORMAT(COL_TIME_ON, '%Y-%m-%d %H:%i') = DATE_FORMAT(\"".$time_on."\", '%Y-%m-%d %H:%i')");
-		  $this->db->where('COL_BAND', $band);
+		  $this->db->where('COL_BAND', $band ?? '');
 		  $this->db->where('COL_MODE', $input_mode);
 		  $this->db->where('station_id', $station_id);
 		  $check = $this->db->get($this->config->item('table_name'));
@@ -4001,7 +4005,7 @@ function lotw_last_qsl_date($user_id) {
 			  'COL_ARRL_SECT' => (!empty($record['arrl_sect'])) ? $record['arrl_sect'] : '',
 			  'COL_AWARD_GRANTED' => (!empty($record['award_granted'])) ? $record['award_granted'] : '',
 			  'COL_AWARD_SUBMITTED' => (!empty($record['award_submitted'])) ? $record['award_submitted'] : '',
-			  'COL_BAND' => $band,
+			  'COL_BAND' => $band ?? '',
 			  'COL_BAND_RX' => $band_rx ?? '',
 			  'COL_BIOGRAPHY' => (!empty($record['biography'])) ? $record['biography'] : '',
 			  'COL_CALL' => (!empty($record['call'])) ? strtoupper($record['call']) : '',
