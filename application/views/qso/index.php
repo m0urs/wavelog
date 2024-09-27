@@ -192,6 +192,23 @@
                 </div>
               </div>
 
+              <div class="mb-3 row">
+                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
+                <div class="col-sm-9">
+                    <input tabindex="18" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
+                </div>
+              </div>
+
+              <div class="mb-3 row">
+                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
+                  <div class="col-sm-9">
+                    <input tabindex="19" type="text" class="form-control form-control-sm" name="locator" id="locator" value="">
+                    <small id="locator_info" class="form-text text-muted"></small>
+                </div>
+              </div>
+
+              <input type="hidden" name="distance" id="distance" value="0">
+
               <?php if ($user_iota_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
                 <label class="col-sm-3 col-form-label" for="iota_ref"><?= __("IOTA Reference"); ?></label>
@@ -268,23 +285,6 @@
                 </div>
               </div>
               <?php } ?>
-
-              <div class="mb-3 row">
-                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
-                <div class="col-sm-9">
-                    <input tabindex="18" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
-                </div>
-              </div>
-
-              <div class="mb-3 row">
-                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
-                  <div class="col-sm-9">
-                    <input tabindex="19" type="text" class="form-control form-control-sm" name="locator" id="locator" value="">
-                    <small id="locator_info" class="form-text text-muted"></small>
-                </div>
-              </div>
-
-              <input type="hidden" name="distance" id="distance" value="0">
 
               <div class="mb-3 row">
                   <label for="comment" class="col-sm-3 col-form-label"><?= __("Comment"); ?></label>
