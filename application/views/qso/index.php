@@ -192,22 +192,33 @@
                 </div>
               </div>
 
+              <?php if ($user_iota_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
-                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
-                <div class="col-sm-9">
-                    <input tabindex="5" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
+                <label class="col-sm-3 col-form-label" for="iota_ref"><?= __("IOTA Reference"); ?></label>
+                      <div class="col-sm-9 align-self-center">
+                      <select class="form-select" id="iota_ref" tabindex="11" name="iota_ref">
+                          <option value =""></option>
+                          <?php
+                          foreach($iota as $i){
+                              echo '<option value=' . $i->tag . '>' . $i->tag . ' - ' . $i->name . '</option>';
+                          }
+                          ?>
+                      </select>
+                      </div>
+              </div>
+              <?php } ?>
+
+              <?php if ($user_sota_to_qso_tab ?? false) { ?>
+              <div class="mb-3 row">
+                <label class="col-sm-3 col-form-label" for="sota_ref"><?= __("SOTA Reference"); ?></label>
+                <div class="col-sm-7 align-self-center">
+                  <input class="form-control" id="sota_ref" tabindex="12" type="text" name="sota_ref" value="" />
+                </div>
+                <div class="col-sm-2 align-self-center">
+                  <small id="sota_info" class="btn btn-secondary spw-buttons"></small>
                 </div>
               </div>
-
-              <div class="mb-3 row">
-                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
-                  <div class="col-sm-9">
-                    <input tabindex="6" type="text" class="form-control form-control-sm" name="locator" id="locator" value="">
-                    <small id="locator_info" class="form-text text-muted"></small>
-                </div>
-              </div>
-
-              <input type="hidden" name="distance" id="distance" value="0">
+              <?php } ?>
 
               <?php if ($user_wwff_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
@@ -230,34 +241,6 @@
                 <div class="col-sm-2 align-self-center">
                   <small id="pota_info" class="btn btn-secondary spw-buttons"></small>
                 </div>
-              </div>
-              <?php } ?>
-
-              <?php if ($user_sota_to_qso_tab ?? false) { ?>
-              <div class="mb-3 row">
-                <label class="col-sm-3 col-form-label" for="sota_ref"><?= __("SOTA Reference"); ?></label>
-                <div class="col-sm-7 align-self-center">
-                  <input class="form-control" id="sota_ref" type="text" name="sota_ref" value="" />
-                </div>
-                <div class="col-sm-2 align-self-center">
-                  <small id="sota_info" class="btn btn-secondary spw-buttons"></small>
-                </div>
-              </div>
-              <?php } ?>
-
-              <?php if ($user_iota_to_qso_tab ?? false) { ?>
-              <div class="mb-3 row">
-                <label class="col-sm-3 col-form-label" for="iota_ref"><?= __("IOTA Reference"); ?></label>
-                      <div class="col-sm-9 align-self-center">
-                      <select class="form-select" id="iota_ref" name="iota_ref">
-                          <option value =""></option>
-                          <?php
-                          foreach($iota as $i){
-                              echo '<option value=' . $i->tag . '>' . $i->tag . ' - ' . $i->name . '</option>';
-                          }
-                          ?>
-                      </select>
-                      </div>
               </div>
               <?php } ?>
 
@@ -285,6 +268,23 @@
                 </div>
               </div>
               <?php } ?>
+
+              <div class="mb-3 row">
+                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
+                <div class="col-sm-9">
+                    <input tabindex="18" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
+                </div>
+              </div>
+
+              <div class="mb-3 row">
+                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
+                  <div class="col-sm-9">
+                    <input tabindex="19" type="text" class="form-control form-control-sm" name="locator" id="locator" value="">
+                    <small id="locator_info" class="form-text text-muted"></small>
+                </div>
+              </div>
+
+              <input type="hidden" name="distance" id="distance" value="0">
 
               <div class="mb-3 row">
                   <label for="comment" class="col-sm-3 col-form-label"><?= __("Comment"); ?></label>
