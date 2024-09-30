@@ -20,17 +20,17 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-09-24 18:21+0000\n"
-"PO-Revision-Date: 2024-09-26 07:57+0000\n"
+"POT-Creation-Date: 2024-09-30 08:47+0000\n"
+"PO-Revision-Date: 2024-09-30 14:42+0000\n"
 "Last-Translator: Jörg Dorgeist <wavelog@dj7nt.de>\n"
-"Language-Team: German <https://translate.wavelog.org/projects/wavelog/"
-"main-translation/de/>\n"
+"Language-Team: German <https://translate.wavelog.org/projects/wavelog/main-"
+"translation/de/>\n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.7.1\n"
+"X-Generator: Weblate 5.7.2\n"
 
 #: application/controllers/Accumulated.php:12
 #: application/controllers/Activators.php:13
@@ -2111,9 +2111,14 @@ msgstr ""
 "mitgelöscht."
 
 #: application/controllers/Stationsetup.php:379
+#: application/views/logbookadvanced/index.php:166
 #: application/views/qso/edit_ajax.php:221
-msgid "NONE"
-msgstr "KEIN"
+#: application/views/station_profile/create.php:78
+#: application/views/station_profile/edit.php:99
+#: application/views/stationsetup/stationsetup.php:150
+msgctxt "DXCC Select - No DXCC"
+msgid "- NONE - (e.g. /MM, /AM)"
+msgstr "- KEIN - (z.B. /MM, /AM)"
 
 #: application/controllers/Stationsetup.php:462
 msgid "Edit Export Map options"
@@ -2489,31 +2494,67 @@ msgstr "HRDlog: Keine QSOs gefunden zum hochladen für Stationsrufzeichen: "
 msgid "HRDlog: No station profiles with HRDlog Credentials found."
 msgstr "HRDlog: Keine Stationsstandorte mit HRDlog Zugangsdaten gefunden."
 
-#: application/models/Logbook_model.php:4257
+#: application/models/Logbook_model.php:3542
+#, php-format
+msgid "Wrong station callsign %s while importing QSO with %s for %s: SKIPPED"
+msgstr ""
+"Falscher Stationscall %s im QSO mit %s für das Stationsprofil %s: Nicht "
+"importiert"
+
+#: application/models/Logbook_model.php:3543
+#, php-format
+msgid "Check %s for hints about errors in ADIF files."
+msgstr "Schaue im %s für Tips zu möglichen Fehlern in der ADIF-Datei."
+
+#: application/models/Logbook_model.php:3845
+msgid "the qslrdate is invalid (YYYYMMDD)"
+msgstr "Das (Papier-)QSL-Empfangsdatum hat das falsche Format (JJJJMMDD)"
+
+#: application/models/Logbook_model.php:3856
+msgid "the qslsdate is invalid (YYYYMMDD)"
+msgstr "Das (Papier-)QSL Sendedatum hat das falsche Format (JJJJMMTT)"
+
+#: application/models/Logbook_model.php:3900
+msgid "the clublog_qso_upload_date is invalid (YYYYMMDD)"
+msgstr "Das Format des Clublog-Upload-Datums ist falsch (JJJJMMTT)"
+
+#: application/models/Logbook_model.php:3920
+msgid "the lotw_qslrdate is invalid (YYYYMMDD)"
+msgstr "Das Format des LoTW-Empfangs-Datums ist falsch (JJJJMMTT)"
+
+#: application/models/Logbook_model.php:3939
+msgid "the lotw_qslsdate is invalid (YYYYMMDD)"
+msgstr "Das Format des LoTW-Sende-Datums ist falsch (JJJJMMTT)"
+
+#: application/models/Logbook_model.php:4197
+msgid "Duplicate for"
+msgstr "Doublette zu"
+
+#: application/models/Logbook_model.php:4258
 msgid "QSO could not be matched"
 msgstr "QSO konnte nicht gefunden werden"
 
-#: application/models/Logbook_model.php:4263
+#: application/models/Logbook_model.php:4264
 msgid "confirmed by LoTW/Clublog/eQSL/Contest"
 msgstr "bestätigt durch LoTW/Clublog/eQSL/Contest"
 
-#: application/models/Logbook_model.php:4268
+#: application/models/Logbook_model.php:4269
 msgid "confirmed by award manager"
 msgstr "bestätigt durch Diplommananger"
 
-#: application/models/Logbook_model.php:4271
+#: application/models/Logbook_model.php:4272
 msgid "confirmed by cross-check of DCL data"
 msgstr "bestätigt durch Cross-Check von DCL-Daten"
 
-#: application/models/Logbook_model.php:4274
+#: application/models/Logbook_model.php:4275
 msgid "confirmation pending"
 msgstr "Bestätigung ausstehend"
 
-#: application/models/Logbook_model.php:4277
+#: application/models/Logbook_model.php:4278
 msgid "unconfirmed"
 msgstr "nicht bestätigt"
 
-#: application/models/Logbook_model.php:4280
+#: application/models/Logbook_model.php:4281
 msgid "unknown"
 msgstr "unbekannt"
 
@@ -3561,16 +3602,16 @@ msgid "Dupes were skipped."
 msgstr "evtl. vorhandene Duplikate wurden übersprungen."
 
 #: application/views/adif/import_success.php:24
-msgid "ADIF Errors"
-msgstr "Fehler in der ADIF-Datei"
+msgid "Import details / possible problems"
+msgstr "Details zum Import / Mögliche Probleme"
 
 #: application/views/adif/import_success.php:25
 msgid ""
-"You have ADIF errors, the QSOs have still been added but these fields have "
-"not been populated."
+"You might have ADIF errors, the QSOs have still been added. Please check the "
+"following information:"
 msgstr ""
-"Es gibt Fehler in der ADIF-Datei. Die QSO wurden hinzugefügt, jedoch wurden "
-"die fehlerhaften Felder nicht ausgefüllt."
+"Es könnte sein, dass das ADIF fehlerhaft ist, die QSOs wurden jedoch "
+"importiert. Bitte prüfe folgende Hinweise:"
 
 #: application/views/adif/mark_lotw.php:12
 #: application/views/hrdlog/mark_hrdlog.php:12
@@ -7757,11 +7798,6 @@ msgstr "bis"
 msgid "Dx"
 msgstr "Dx"
 
-#: application/views/logbookadvanced/index.php:166
-msgctxt "Logbook Advanced DXCC Select"
-msgid "- NONE - (e.g. /MM, /AM)"
-msgstr "- KEIN - (z.B. /MM, /AM)"
-
 #: application/views/logbookadvanced/index.php:231
 msgctxt "Propagation Mode"
 msgid "None/Empty"
@@ -10436,12 +10472,6 @@ msgstr ""
 msgid "Station DXCC"
 msgstr "Stations-DXCC"
 
-#: application/views/station_profile/create.php:78
-#: application/views/station_profile/edit.php:99
-msgctxt "DXCC selection"
-msgid "None"
-msgstr "Nichts"
-
 #: application/views/station_profile/create.php:85
 #: application/views/station_profile/edit.php:112
 msgid "Station DXCC entity. For example: Bolivia"
@@ -12149,6 +12179,45 @@ msgstr "Dein Rufzeichen:"
 #: application/views/widgets/oqrs.php:90
 msgid "Submit Request"
 msgstr "Anfrage senden"
+
+#~ msgid "SKIPPED"
+#~ msgstr "Übersprungen"
+
+#~ msgid "Wrong station callsign"
+#~ msgstr "Falscher Call"
+
+#~ msgid "for"
+#~ msgstr "für"
+
+#~ msgid "while importing QSO with "
+#~ msgstr "während des Imports des QSOs mit "
+
+#~ msgid "Check "
+#~ msgstr "Prüfe "
+
+#~ msgid "for hints about errors in ADIF files."
+#~ msgstr "zu Tips über (evtl.) Fehler in ADIF-Dateien."
+
+#~ msgid "ADIF Errors"
+#~ msgstr "Fehler in der ADIF-Datei"
+
+#~ msgid ""
+#~ "You have ADIF errors, the QSOs have still been added but these fields "
+#~ "have not been populated."
+#~ msgstr ""
+#~ "Es gibt Fehler in der ADIF-Datei. Die QSO wurden hinzugefügt, jedoch "
+#~ "wurden die fehlerhaften Felder nicht ausgefüllt."
+
+#~ msgid "NONE"
+#~ msgstr "KEIN"
+
+#~ msgctxt "Logbook Advanced DXCC Select"
+#~ msgid "- NONE - (e.g. /MM, /AM)"
+#~ msgstr "- KEIN - (z.B. /MM, /AM)"
+
+#~ msgctxt "DXCC selection"
+#~ msgid "None"
+#~ msgstr "Nichts"
 
 #~ msgid "Notes (for internal usage only)"
 #~ msgstr "Notizen (nur für den internen Gebrauch)"

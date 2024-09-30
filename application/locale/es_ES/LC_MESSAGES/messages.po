@@ -8,7 +8,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-09-24 18:21+0000\n"
+"POT-Creation-Date: 2024-09-30 08:47+0000\n"
 "PO-Revision-Date: 2024-08-28 05:06+0000\n"
 "Last-Translator: Francisco Jiménez-Martín Sánchez <ea1jm.fran@gmail.com>\n"
 "Language-Team: Spanish <https://translate.wavelog.org/projects/wavelog/main-"
@@ -2078,8 +2078,13 @@ msgid ""
 msgstr ""
 
 #: application/controllers/Stationsetup.php:379
+#: application/views/logbookadvanced/index.php:166
 #: application/views/qso/edit_ajax.php:221
-msgid "NONE"
+#: application/views/station_profile/create.php:78
+#: application/views/station_profile/edit.php:99
+#: application/views/stationsetup/stationsetup.php:150
+msgctxt "DXCC Select - No DXCC"
+msgid "- NONE - (e.g. /MM, /AM)"
 msgstr ""
 
 #: application/controllers/Stationsetup.php:462
@@ -2438,31 +2443,65 @@ msgstr ""
 msgid "HRDlog: No station profiles with HRDlog Credentials found."
 msgstr ""
 
-#: application/models/Logbook_model.php:4257
+#: application/models/Logbook_model.php:3542
+#, php-format
+msgid "Wrong station callsign %s while importing QSO with %s for %s: SKIPPED"
+msgstr ""
+
+#: application/models/Logbook_model.php:3543
+#, php-format
+msgid "Check %s for hints about errors in ADIF files."
+msgstr ""
+
+#: application/models/Logbook_model.php:3845
+msgid "the qslrdate is invalid (YYYYMMDD)"
+msgstr ""
+
+#: application/models/Logbook_model.php:3856
+msgid "the qslsdate is invalid (YYYYMMDD)"
+msgstr ""
+
+#: application/models/Logbook_model.php:3900
+msgid "the clublog_qso_upload_date is invalid (YYYYMMDD)"
+msgstr ""
+
+#: application/models/Logbook_model.php:3920
+msgid "the lotw_qslrdate is invalid (YYYYMMDD)"
+msgstr ""
+
+#: application/models/Logbook_model.php:3939
+msgid "the lotw_qslsdate is invalid (YYYYMMDD)"
+msgstr ""
+
+#: application/models/Logbook_model.php:4197
+msgid "Duplicate for"
+msgstr ""
+
+#: application/models/Logbook_model.php:4258
 msgid "QSO could not be matched"
 msgstr "QSOs que no concuerdan"
 
-#: application/models/Logbook_model.php:4263
+#: application/models/Logbook_model.php:4264
 msgid "confirmed by LoTW/Clublog/eQSL/Contest"
 msgstr "confirmados por LoTW/Clublog/eQSL/Concurso"
 
-#: application/models/Logbook_model.php:4268
+#: application/models/Logbook_model.php:4269
 msgid "confirmed by award manager"
 msgstr "confirmados por el administrador del premio"
 
-#: application/models/Logbook_model.php:4271
+#: application/models/Logbook_model.php:4272
 msgid "confirmed by cross-check of DCL data"
 msgstr "confirmados al hacer chequeo cruzadoc on datos de DCL"
 
-#: application/models/Logbook_model.php:4274
+#: application/models/Logbook_model.php:4275
 msgid "confirmation pending"
 msgstr "pendiente de confirmación"
 
-#: application/models/Logbook_model.php:4277
+#: application/models/Logbook_model.php:4278
 msgid "unconfirmed"
 msgstr "sin confirmar"
 
-#: application/models/Logbook_model.php:4280
+#: application/models/Logbook_model.php:4281
 msgid "unknown"
 msgstr "desconocido"
 
@@ -3495,16 +3534,14 @@ msgid "Dupes were skipped."
 msgstr ""
 
 #: application/views/adif/import_success.php:24
-msgid "ADIF Errors"
-msgstr "Errores ADIF"
+msgid "Import details / possible problems"
+msgstr ""
 
 #: application/views/adif/import_success.php:25
 msgid ""
-"You have ADIF errors, the QSOs have still been added but these fields have "
-"not been populated."
+"You might have ADIF errors, the QSOs have still been added. Please check the "
+"following information:"
 msgstr ""
-"Tiene errores en su archivo ADIF. Los QSOs han sido adicionados, pero estos "
-"campos no han sido importados."
 
 #: application/views/adif/mark_lotw.php:12
 #: application/views/hrdlog/mark_hrdlog.php:12
@@ -7426,11 +7463,6 @@ msgstr "a"
 msgid "Dx"
 msgstr ""
 
-#: application/views/logbookadvanced/index.php:166
-msgctxt "Logbook Advanced DXCC Select"
-msgid "- NONE - (e.g. /MM, /AM)"
-msgstr ""
-
 #: application/views/logbookadvanced/index.php:231
 msgctxt "Propagation Mode"
 msgid "None/Empty"
@@ -10035,12 +10067,6 @@ msgstr ""
 msgid "Station DXCC"
 msgstr "DXCC de la Estación"
 
-#: application/views/station_profile/create.php:78
-#: application/views/station_profile/edit.php:99
-msgctxt "DXCC selection"
-msgid "None"
-msgstr "Ninguno"
-
 #: application/views/station_profile/create.php:85
 #: application/views/station_profile/edit.php:112
 msgid "Station DXCC entity. For example: Bolivia"
@@ -11666,6 +11692,20 @@ msgstr ""
 #: application/views/widgets/oqrs.php:90
 msgid "Submit Request"
 msgstr ""
+
+#~ msgid "ADIF Errors"
+#~ msgstr "Errores ADIF"
+
+#~ msgid ""
+#~ "You have ADIF errors, the QSOs have still been added but these fields "
+#~ "have not been populated."
+#~ msgstr ""
+#~ "Tiene errores en su archivo ADIF. Los QSOs han sido adicionados, pero "
+#~ "estos campos no han sido importados."
+
+#~ msgctxt "DXCC selection"
+#~ msgid "None"
+#~ msgstr "Ninguno"
 
 #~ msgid "This note content is exported to QSL services like eqsl.cc."
 #~ msgstr ""
