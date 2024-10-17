@@ -8,8 +8,8 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-10-15 16:16+0000\n"
-"PO-Revision-Date: 2024-10-09 13:43+0000\n"
+"POT-Creation-Date: 2024-10-17 14:22+0000\n"
+"PO-Revision-Date: 2024-10-14 19:43+0000\n"
 "Last-Translator: Michael Skolsky <r1blh@yandex.ru>\n"
 "Language-Team: Russian <https://translate.wavelog.org/projects/wavelog/main-"
 "translation/ru/>\n"
@@ -1686,7 +1686,7 @@ msgstr "Поиск в журнале и OQRS"
 
 #: application/controllers/Oqrs.php:67
 msgid "Invalid Station ID"
-msgstr ""
+msgstr "Недействительный идентификатор станции"
 
 #: application/controllers/Oqrs.php:134
 #: application/views/interface_assets/header.php:419
@@ -2130,7 +2130,7 @@ msgstr ""
 #: application/views/station_profile/edit.php:99
 #: application/views/stationsetup/stationsetup.php:150
 msgid "Please select one"
-msgstr ""
+msgstr "Пожалуйста, выберите один"
 
 #: application/controllers/Stationsetup.php:462
 msgid "Edit Export Map options"
@@ -2506,21 +2506,21 @@ msgstr "HRDlog: на найдены QSO для загруки для позыв�
 msgid "HRDlog: No station profiles with HRDlog Credentials found."
 msgstr "HRDlog: не найдены профили QTH с данными входя на HRDlog."
 
-#: application/models/Logbook_model.php:3673
+#: application/models/Logbook_model.php:3678
 #, php-format
 msgid "Wrong station callsign %s while importing QSO with %s for %s: SKIPPED"
 msgstr "Неправильный позывной %s при импорте QSO с %s для %s: ПРОПУЩЕНО"
 
-#: application/models/Logbook_model.php:3674
+#: application/models/Logbook_model.php:3679
 #, php-format
 msgid "Check %s for hints about errors in ADIF files."
 msgstr "Проверьте %s на наличие подсказок об ошибках в файлах ADIF."
 
-#: application/models/Logbook_model.php:3686
+#: application/models/Logbook_model.php:3691
 msgid "QSO on"
 msgstr "начало QSO"
 
-#: application/models/Logbook_model.php:3686
+#: application/models/Logbook_model.php:3691
 msgid ""
 "You tried to import a QSO without any given CALL. This QSO wasn't imported. "
 "It's invalid"
@@ -2528,55 +2528,55 @@ msgstr ""
 "Вы пытались импортировать QSO без указанного позывного. Это QSO не было "
 "импортировано. Оно недействительно"
 
-#: application/models/Logbook_model.php:3982
+#: application/models/Logbook_model.php:3987
 msgid "the qslrdate is invalid (YYYYMMDD)"
 msgstr "дата получения QSL недействительна (ГГГГММДД)"
 
-#: application/models/Logbook_model.php:3993
+#: application/models/Logbook_model.php:3998
 msgid "the qslsdate is invalid (YYYYMMDD)"
 msgstr "дата отправки QSL недействительна (ГГГГММДД)"
 
-#: application/models/Logbook_model.php:4037
+#: application/models/Logbook_model.php:4042
 msgid "the clublog_qso_upload_date is invalid (YYYYMMDD)"
 msgstr "дата загрузки QSO в Clublog недействительна (ГГГГММДД)"
 
-#: application/models/Logbook_model.php:4057
+#: application/models/Logbook_model.php:4062
 msgid "the lotw_qslrdate is invalid (YYYYMMDD)"
 msgstr "дата получения LoTW QSL недействительна (ГГГГММДД)"
 
-#: application/models/Logbook_model.php:4076
+#: application/models/Logbook_model.php:4081
 msgid "the lotw_qslsdate is invalid (YYYYMMDD)"
 msgstr "дата отправки LoTW QSL недействительна (ГГГГММДД)"
 
-#: application/models/Logbook_model.php:4340
+#: application/models/Logbook_model.php:4345
 msgid "Duplicate for"
 msgstr "Дубликат для"
 
-#: application/models/Logbook_model.php:4401
+#: application/models/Logbook_model.php:4406
 msgid "QSO could not be matched"
 msgstr "QSO не может быть сопоставлено"
 
-#: application/models/Logbook_model.php:4407
+#: application/models/Logbook_model.php:4412
 msgid "confirmed by LoTW/Clublog/eQSL/Contest"
 msgstr "подтверждено LoTW/Clublog/eQSL/Contest"
 
-#: application/models/Logbook_model.php:4412
+#: application/models/Logbook_model.php:4417
 msgid "confirmed by award manager"
 msgstr "подтверждено менеджером диплома"
 
-#: application/models/Logbook_model.php:4415
+#: application/models/Logbook_model.php:4420
 msgid "confirmed by cross-check of DCL data"
 msgstr "подтверждено кросс-проверкой с данными DCL"
 
-#: application/models/Logbook_model.php:4418
+#: application/models/Logbook_model.php:4423
 msgid "confirmation pending"
 msgstr "подтверждение ожидается"
 
-#: application/models/Logbook_model.php:4421
+#: application/models/Logbook_model.php:4426
 msgid "unconfirmed"
 msgstr "не подтверждено"
 
-#: application/models/Logbook_model.php:4424
+#: application/models/Logbook_model.php:4429
 msgid "unknown"
 msgstr "неизвестно"
 
@@ -6798,54 +6798,66 @@ msgid "English"
 msgstr "Английский"
 
 #: application/views/debug/index.php:651
+msgid "Estonian"
+msgstr ""
+
+#: application/views/debug/index.php:652
 msgid "Finnish"
 msgstr "Финский"
 
-#: application/views/debug/index.php:652
+#: application/views/debug/index.php:653
 msgid "French"
 msgstr "Французский"
 
-#: application/views/debug/index.php:653
+#: application/views/debug/index.php:654
 msgid "German"
 msgstr "Немецкий"
 
-#: application/views/debug/index.php:654
+#: application/views/debug/index.php:655
 msgid "Greek"
 msgstr "Греческий"
 
-#: application/views/debug/index.php:655
+#: application/views/debug/index.php:656
 msgid "Italian"
 msgstr "Итальянский"
 
-#: application/views/debug/index.php:656
+#: application/views/debug/index.php:657
+msgid "Latvian"
+msgstr ""
+
+#: application/views/debug/index.php:658
+msgid "Lithuanian"
+msgstr ""
+
+#: application/views/debug/index.php:659
 msgid "Montenegrin"
 msgstr "Черногорский"
 
-#: application/views/debug/index.php:657
+#: application/views/debug/index.php:660
 msgid "Polish"
 msgstr "Польский"
 
-#: application/views/debug/index.php:658
+#: application/views/debug/index.php:661
 msgid "Portuguese"
 msgstr "Португальский"
 
-#: application/views/debug/index.php:659
+#: application/views/debug/index.php:662
 msgid "Russian"
 msgstr "Русский"
 
-#: application/views/debug/index.php:660
+#: application/views/debug/index.php:663
 msgid "Serbian"
 msgstr "Сербский"
 
-#: application/views/debug/index.php:661
+#: application/views/debug/index.php:664
 msgid "Spanish"
 msgstr "Испанский"
 
-#: application/views/debug/index.php:662
+#: application/views/debug/index.php:665
 msgid "Swedish"
 msgstr "Шведский"
 
-#: application/views/debug/index.php:663
+#: application/views/debug/index.php:666
 msgid "Turkish"
 msgstr "Турецкий"
 
@@ -6951,7 +6963,7 @@ msgstr "Подвид"
 
 #: application/views/eqsl/analysis.php:41
 msgid "eQSL Received Date"
-msgstr ""
+msgstr "Дата получения eQSL"
 
 #: application/views/eqsl/analysis.php:42
 msgid "Log Status"
@@ -6975,7 +6987,7 @@ msgstr ""
 
 #: application/views/eqsl/download.php:43
 msgid "eQSL Receive Date"
-msgstr ""
+msgstr "Дата получения eQSL"
 
 #: application/views/eqsl/download.php:44
 msgid "Action"
