@@ -53,7 +53,9 @@
 			\"sig\":{\"show\":\"true\"},
 			\"continent\":{\"show\":\"true\"},
 			\"qrz\":{\"show\":\"true\"},
-			\"profilename\":{\"show\":\"true\"}
+			\"profilename\":{\"show\":\"true\"},
+			\"stationpower\":{\"show\":\"true\"},
+			\"distance\":{\"show\":\"true\"}
         }";
     }
     $current_opts = json_decode($options);
@@ -116,6 +118,14 @@
     }
 	if (!isset($current_opts->profilename)) {
         echo "\nvar o_template = { profilename: {show: 'true'}};";
+        echo "\nuser_options={...user_options, ...o_template};";
+    }
+	if (!isset($current_opts->stationpower)) {
+        echo "\nvar o_template = { stationpower: {show: 'true'}};";
+        echo "\nuser_options={...user_options, ...o_template};";
+    }
+	if (!isset($current_opts->distance)) {
+        echo "\nvar o_template = { distance: {show: 'true'}};";
         echo "\nuser_options={...user_options, ...o_template};";
     }
 
@@ -641,7 +651,7 @@ $options = json_decode($options);
                     <?php if (($options->pota->show ?? "true") == "true") {
                         echo '<th>' . __("POTA") . '</th>';
                     } ?>
-					                    <?php if (($options->sota->show ?? "true") == "true") {
+					<?php if (($options->sota->show ?? "true") == "true") {
                         echo '<th>SOTA</th>';
                     } ?>
                     <?php if (($options->dok->show ?? "true") == "true") {
@@ -671,8 +681,14 @@ $options = json_decode($options);
 					<?php if (($options->continent->show ?? "true") == "true") {
                         echo '<th>' . __("Continent") . '</th>';
                     } ?>
+					<?php if (($options->distance->show ?? "true") == "true") {
+                        echo '<th class="distance-column-sort">' . __("Distance") . '</th>';
+                    } ?>
 					<?php if (($options->profilename->show ?? "true") == "true") {
                         echo '<th>' . __("Profile name") . '</th>';
+                    } ?>
+					<?php if (($options->stationpower->show ?? "true") == "true") {
+                        echo '<th>' . __("Station power") . '</th>';
                     } ?>
                 </tr>
             </thead>

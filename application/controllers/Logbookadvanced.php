@@ -148,6 +148,7 @@ class Logbookadvanced extends CI_Controller {
 		);
 
 		$qsos = [];
+
 		foreach ($this->logbookadvanced_model->searchQsos($searchCriteria) as $qso) {
 			$qsos[] = $qso->toArray();
 		}
@@ -418,7 +419,7 @@ class Logbookadvanced extends CI_Controller {
 		if (strlen($grid) == 6)  $grid .= "55";	// Only 6 Chars? Fill with center "55"
 		if (strlen($grid) == 8)  $grid .= "LL";	// Only 8 Chars? Fill with center "LL" as only A-R allowed
 		// Regex pattern to match a single valid Maidenhead grid square (with optional extensions)
-		$singleGridPattern = '[A-R]{2}[0-9]{2}[A-X]{2}[0-9]{2}[A-X]{2}';
+		$singleGridPattern = '[A-R]{2}[0-9]{2}([A-X]{2})?([0-9]{2})?([A-X]{2})?';
 
 		// Regex to match VUCC grids, allowing multiple grids separated by commas
 		$compoundPattern = '/^(' . $singleGridPattern . ')(,' . $singleGridPattern . ')*$/i';
@@ -556,6 +557,8 @@ class Logbookadvanced extends CI_Controller {
 		$json_string['continent']['show'] = $this->input->post('continent');
 		$json_string['qrz']['show'] = $this->input->post('qrz');
 		$json_string['profilename']['show'] = $this->input->post('profilename');
+		$json_string['stationpower']['show'] = $this->input->post('stationpower');
+		$json_string['distance']['show'] = $this->input->post('distance');
 
 		$obj['column_settings']= json_encode($json_string);
 
@@ -603,6 +606,15 @@ class Logbookadvanced extends CI_Controller {
         }
 
 		$q = [];
+		// Get Date format
+		if($this->session->userdata('user_date_format')) {
+			// If Logged in and session exists
+			$custom_date_format = $this->session->userdata('user_date_format');
+		} else {
+			// Get Default date format from /config/wavelog.php
+			$custom_date_format = $this->config->item('qso_date_format');
+		}
+
 		foreach ($qsos as $qso) {
 			$q[] = $qso->toArray();
 		}
