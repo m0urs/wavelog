@@ -8,8 +8,8 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2024-11-24 23:05+0000\n"
-"PO-Revision-Date: 2024-11-19 15:29+0000\n"
+"POT-Creation-Date: 2024-11-27 16:31+0000\n"
+"PO-Revision-Date: 2024-11-26 02:16+0000\n"
 "Last-Translator: Michael Skolsky <r1blh@yandex.ru>\n"
 "Language-Team: Russian <https://translate.wavelog.org/projects/wavelog/main-"
 "translation/ru/>\n"
@@ -19,7 +19,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\n"
-"X-Generator: Weblate 5.8.3\n"
+"X-Generator: Weblate 5.8.4\n"
 
 #: application/controllers/Accumulated.php:12
 #: application/controllers/Activators.php:13
@@ -355,7 +355,7 @@ msgid " and "
 msgstr " и "
 
 #: application/controllers/Awards.php:489
-#: application/controllers/Logbook.php:1364
+#: application/controllers/Logbook.php:1271
 #: application/views/awards/index.php:8 application/views/bands/index.php:55
 #: application/views/dashboard/index.php:9
 #: application/views/interface_assets/header.php:184
@@ -381,7 +381,7 @@ msgid "SOTA"
 msgstr "SOTA"
 
 #: application/controllers/Awards.php:506
-#: application/controllers/Logbook.php:1365
+#: application/controllers/Logbook.php:1272
 #: application/views/bands/index.php:60
 #: application/views/dashboard/index.php:10
 #: application/views/interface_assets/header.php:178
@@ -401,7 +401,7 @@ msgid "WWFF"
 msgstr "WWFF"
 
 #: application/controllers/Awards.php:523
-#: application/controllers/Logbook.php:1366
+#: application/controllers/Logbook.php:1273
 #: application/views/bands/index.php:52
 #: application/views/dashboard/index.php:11
 #: application/views/interface_assets/header.php:188
@@ -981,8 +981,8 @@ msgstr "Журналы"
 msgid "Logbook"
 msgstr "Журнал"
 
-#: application/controllers/Logbook.php:658
-#: application/controllers/Logbook.php:673
+#: application/controllers/Logbook.php:659
+#: application/controllers/Logbook.php:674
 #: application/views/activated_gridmap/index.php:58
 #: application/views/awards/dok/index.php:55
 #: application/views/awards/dxcc/index.php:61
@@ -1006,7 +1006,7 @@ msgstr "Журнал"
 msgid "QSL"
 msgstr "QSL"
 
-#: application/controllers/Logbook.php:661
+#: application/controllers/Logbook.php:662
 #: application/views/activated_gridmap/index.php:66
 #: application/views/awards/cq/index.php:60
 #: application/views/awards/dok/index.php:59
@@ -1036,7 +1036,7 @@ msgstr "QSL"
 msgid "LoTW"
 msgstr "LoTW"
 
-#: application/controllers/Logbook.php:664
+#: application/controllers/Logbook.php:665
 #: application/views/activated_gridmap/index.php:74
 #: application/views/awards/cq/index.php:64
 #: application/views/awards/dok/index.php:63
@@ -1066,7 +1066,7 @@ msgstr "LoTW"
 msgid "eQSL"
 msgstr "eQSL"
 
-#: application/controllers/Logbook.php:670
+#: application/controllers/Logbook.php:671
 #: application/views/awards/dok/index.php:71
 #: application/views/awards/dxcc/index.php:77
 #: application/views/awards/jcc/index.php:68
@@ -1083,7 +1083,7 @@ msgstr "eQSL"
 msgid "Clublog"
 msgstr "Clublog"
 
-#: application/controllers/Logbook.php:1359
+#: application/controllers/Logbook.php:1266
 #: application/controllers/Radio.php:49
 #: application/views/accumulate/index.php:31
 #: application/views/activated_gridmap/index.php:39
@@ -1158,7 +1158,7 @@ msgstr "Clublog"
 msgid "Mode"
 msgstr "Вид модуляции"
 
-#: application/controllers/Logbook.php:1360
+#: application/controllers/Logbook.php:1267
 #: application/views/awards/pota/index.php:36
 #: application/views/awards/wwff/index.php:36
 #: application/views/contesting/index.php:174
@@ -1185,7 +1185,7 @@ msgstr "Вид модуляции"
 msgid "RST (S)"
 msgstr "RST (TX)"
 
-#: application/controllers/Logbook.php:1361
+#: application/controllers/Logbook.php:1268
 #: application/views/awards/pota/index.php:37
 #: application/views/awards/wwff/index.php:37
 #: application/views/contesting/index.php:198
@@ -1213,7 +1213,7 @@ msgstr "RST (TX)"
 msgid "RST (R)"
 msgstr "RST (RX)"
 
-#: application/controllers/Logbook.php:1362
+#: application/controllers/Logbook.php:1269
 #: application/views/dashboard/index.php:7
 #: application/views/qslcard/searchresult.php:15
 #: application/views/qslcard/searchresult.php:31
@@ -1235,7 +1235,7 @@ msgstr "RST (RX)"
 msgid "Country"
 msgstr "Страна"
 
-#: application/controllers/Logbook.php:1363
+#: application/controllers/Logbook.php:1270
 #: application/views/awards/iota/index.php:169
 #: application/views/bands/index.php:50 application/views/dashboard/index.php:8
 #: application/views/interface_assets/header.php:186
@@ -1262,7 +1262,7 @@ msgstr "Страна"
 msgid "IOTA"
 msgstr "IOTA"
 
-#: application/controllers/Logbook.php:1367
+#: application/controllers/Logbook.php:1274
 #: application/views/awards/counties/details.php:12
 #: application/views/awards/counties/index.php:20
 #: application/views/awards/rac/index.php:143
@@ -1290,7 +1290,7 @@ msgstr "IOTA"
 msgid "State"
 msgstr "Область/штат"
 
-#: application/controllers/Logbook.php:1368
+#: application/controllers/Logbook.php:1275
 #: application/views/activated_gridmap/index.php:106
 #: application/views/awards/ffma/index.php:34
 #: application/views/awards/gridmaster/index.php:40
@@ -1331,7 +1331,7 @@ msgstr "Область/штат"
 msgid "Gridsquare"
 msgstr "QTH локатор"
 
-#: application/controllers/Logbook.php:1369
+#: application/controllers/Logbook.php:1276
 #: application/views/activated_gridmap/index.php:108
 #: application/views/awards/ffma/index.php:36
 #: application/views/awards/gridmaster/index.php:42
@@ -1357,7 +1357,7 @@ msgstr "QTH локатор"
 msgid "Distance"
 msgstr "Дистанция"
 
-#: application/controllers/Logbook.php:1370
+#: application/controllers/Logbook.php:1277
 #: application/views/accumulate/index.php:21
 #: application/views/activated_gridmap/index.php:8
 #: application/views/activators/index.php:10
@@ -1435,7 +1435,7 @@ msgstr "Дистанция"
 msgid "Band"
 msgstr "Диапазон"
 
-#: application/controllers/Logbook.php:1371
+#: application/controllers/Logbook.php:1278
 #: application/controllers/Radio.php:48 application/views/bandmap/list.php:113
 #: application/views/contesting/index.php:143
 #: application/views/dashboard/index.php:16
@@ -1455,7 +1455,7 @@ msgstr "Диапазон"
 msgid "Frequency"
 msgstr "Частота"
 
-#: application/controllers/Logbook.php:1372
+#: application/controllers/Logbook.php:1279
 #: application/views/dashboard/index.php:17
 #: application/views/logbookadvanced/edit.php:14
 #: application/views/logbookadvanced/index.php:320
@@ -1477,7 +1477,7 @@ msgstr "Частота"
 msgid "Operator"
 msgstr "Оператор"
 
-#: application/controllers/Logbook.php:1393
+#: application/controllers/Logbook.php:1300
 #: application/controllers/Stationsetup.php:381
 #: application/views/awards/dxcc/index.php:28
 #: application/views/awards/dxcc/index.php:238
@@ -2232,7 +2232,7 @@ msgstr "Статистика QSL"
 #: application/views/interface_assets/header.php:136
 #: application/views/statistics/antennaanalytics.php:3
 msgid "Antenna Analytics"
-msgstr ""
+msgstr "Аналитика антенн"
 
 #: application/controllers/Themes.php:27
 #: application/views/interface_assets/header.php:284
@@ -2443,6 +2443,10 @@ msgstr ""
 #: application/controllers/Widgets.php:54 application/views/oqrs/index.php:69
 msgid "No stations found that are using Wavelog OQRS."
 msgstr "Не найдено профилей QTH, использующих OQRS."
+
+#: application/libraries/Callbook.php:86
+msgid "QRZCQ Error"
+msgstr ""
 
 #: application/libraries/Subdivisions.php:31
 msgctxt "Division Name (States in various countries)."
@@ -6443,19 +6447,19 @@ msgstr "Квадраты VUCC"
 
 #: application/views/dayswithqso/index.php:3
 msgid "Number of QSOs for this day of the week"
-msgstr ""
+msgstr "Количество QSO за этот день недели"
 
 #: application/views/dayswithqso/index.php:17
 msgid "Days of the week"
-msgstr ""
+msgstr "Дни недели"
 
 #: application/views/dayswithqso/index.php:20
 msgid "Months of the year"
-msgstr ""
+msgstr "Месяцы"
 
 #: application/views/dayswithqso/index.php:23
 msgid "Streaks"
-msgstr ""
+msgstr "Полосы"
 
 #: application/views/dayswithqso/index.php:31
 msgid "Number of days with QSOs each year"
@@ -6467,11 +6471,11 @@ msgstr "Дней"
 
 #: application/views/dayswithqso/index.php:63
 msgid "QSOs breakdown by day of the week"
-msgstr ""
+msgstr "Распределение QSO по дням недели"
 
 #: application/views/dayswithqso/index.php:69
 msgid "QSOs breakdown by month of the year"
-msgstr ""
+msgstr "Распределение QSO по месяцам года"
 
 #: application/views/dayswithqso/index.php:75
 msgid "Longest streak with QSOs in the log"
@@ -10095,7 +10099,7 @@ msgstr "Например: Q03"
 
 #: application/views/qso/index.php:551
 msgid "E-mail address of QSO-partner"
-msgstr ""
+msgstr "Адрес электронной почты корреспондента в QSO"
 
 #: application/views/qso/index.php:560 application/views/view_log/qso.php:299
 msgid "Satellite Name"
@@ -11508,7 +11512,7 @@ msgstr "Посетите публичную страницу"
 
 #: application/views/statistics/antennaanalytics.php:11
 msgid "Elevation"
-msgstr ""
+msgstr "Возвышение"
 
 #: application/views/statistics/custom.php:12
 #: application/views/statistics/custom_result.php:12
@@ -12497,7 +12501,7 @@ msgstr "Суммарная дистанция"
 
 #: application/views/view_log/qso.php:162
 msgid "Other Path"
-msgstr ""
+msgstr "Другой путь"
 
 #: application/views/view_log/qso.php:313
 msgid "Antenna Azimuth"
