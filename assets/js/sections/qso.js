@@ -1230,12 +1230,17 @@ function testTimeOffConsistency() {
 }
 
 $(document).ready(function () {
+	qrg_inputtype();
 	clearTimeout();
 	set_timers();
 	updateStateDropdown('#dxcc_id', '#stateInputLabel', '#location_us_county', '#stationCntyInputQso');
 
-	// Clear the localStorage for the qrg units
+	// Clear the localStorage for the qrg units, except the quicklogCallsign
+	let quicklogCallsign = localStorage.getItem('quicklogCallsign');
 	localStorage.clear();
+	if (quicklogCallsign) {
+		localStorage.setItem('quicklogCallsign', quicklogCallsign);
+	}
 	set_qrg();
 
 	$("#locator").popover({ placement: 'top', title: 'Gridsquare Formatting', content: "Enter multiple (4-digit) grids separated with commas. For example: IO77,IO78" })
