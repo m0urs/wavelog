@@ -231,14 +231,14 @@
               </div>
               <?php } ?>
 
-              <?php if ($user_sota_to_qso_tab ?? false) { ?>
+              <?php if ($user_pota_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
-                <label class="col-sm-3 col-form-label" for="sota_ref"><?= __("SOTA Reference"); ?></label>
+                <label class="col-sm-3 col-form-label" for="pota_ref"><?= __("POTA Reference(s)"); ?></label>
                 <div class="col-sm-7 align-self-center">
-                  <input class="form-control" id="sota_ref" tabindex="12" type="text" name="sota_ref" value="" />
+                  <input class="form-control" id="pota_ref" tabindex="14" type="text" name="pota_ref" value="" />
                 </div>
                 <div class="col-sm-2 align-self-center">
-                  <small id="sota_info" class="btn btn-secondary spw-buttons"></small>
+                  <small id="pota_info" class="btn btn-secondary spw-buttons"></small>
                 </div>
               </div>
               <?php } ?>
@@ -255,14 +255,14 @@
               </div>
               <?php } ?>
 
-              <?php if ($user_pota_to_qso_tab ?? false) { ?>
+              <?php if ($user_sota_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
-                <label class="col-sm-3 col-form-label" for="pota_ref"><?= __("POTA Reference(s)"); ?></label>
+                <label class="col-sm-3 col-form-label" for="sota_ref"><?= __("SOTA Reference"); ?></label>
                 <div class="col-sm-7 align-self-center">
-                  <input class="form-control" id="pota_ref" tabindex="14" type="text" name="pota_ref" value="" />
+                  <input class="form-control" id="sota_ref" tabindex="12" type="text" name="sota_ref" value="" />
                 </div>
                 <div class="col-sm-2 align-self-center">
-                  <small id="pota_info" class="btn btn-secondary spw-buttons"></small>
+                  <small id="sota_info" class="btn btn-secondary spw-buttons"></small>
                 </div>
               </div>
               <?php } ?>
@@ -291,23 +291,6 @@
                 </div>
               </div>
               <?php } ?>
-
-              <div class="mb-3 row">
-                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
-                <div class="col-sm-9">
-                    <input tabindex="18" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
-                </div>
-              </div>
-
-              <div class="mb-3 row">
-                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
-                  <div class="col-sm-9">
-                    <input tabindex="19" type="text" class="form-control form-control-sm uppercase" name="locator" id="locator" value="">
-                    <small id="locator_info" class="form-text text-muted"></small>
-                </div>
-              </div>
-
-              <input type="hidden" name="distance" id="distance" value="0">
 
               <div class="mb-3 row">
                   <label for="comment" class="col-sm-3 col-form-label"><?= __("Comment"); ?></label>
