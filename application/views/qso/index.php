@@ -126,7 +126,7 @@
                 <div class="mb-3 col-md-12">
                   <label for="callsign"><?= __("Callsign"); ?></label>&nbsp;<i id="check_cluster" data-bs-toggle="tooltip" title="<?= __("Search DXCluster for latest Spot"); ?>" class="fas fa-search"></i>
                   <div class="input-group">
-                    <input tabindex="7" type="text" class="form-control" id="callsign" name="callsign" autocomplete="off" required>
+                    <input tabindex="7" type="text" class="form-control uppercase" id="callsign" name="callsign" autocomplete="off" required>
                     <span id="qrz_info" class="input-group-text btn-included-on-field d-none py-0"></span>
                     <span id="hamqth_info" class="input-group-text btn-included-on-field d-none py-0"></span>
                   </div>
@@ -291,6 +291,23 @@
                 </div>
               </div>
               <?php } ?>
+
+              <div class="mb-3 row">
+                <label for="qth" class="col-sm-3 col-form-label"><?= __("Location"); ?></label>
+                <div class="col-sm-9">
+                    <input tabindex="18" type="text" class="form-control form-control-sm" name="qth" id="qth" maxlength="64" value="">
+                </div>
+              </div>
+
+              <div class="mb-3 row">
+                  <label for="locator" class="col-sm-3 col-form-label"><?= __("Gridsquare"); ?></label>
+                  <div class="col-sm-9">
+                    <input tabindex="19" type="text" class="form-control form-control-sm uppercase" name="locator" id="locator" value="">
+                    <small id="locator_info" class="form-text text-muted"></small>
+                </div>
+              </div>
+
+              <input type="hidden" name="distance" id="distance" value="0">
 
               <div class="mb-3 row">
                   <label for="comment" class="col-sm-3 col-form-label"><?= __("Comment"); ?></label>
