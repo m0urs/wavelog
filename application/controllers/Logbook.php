@@ -625,10 +625,11 @@ class Logbook extends CI_Controller {
 		$html = "";
 
 		if(!empty($logbooks_locations_array)) {
-			$this->db->select(''.$this->config->item('table_name').'.COL_CALL, '.$this->config->item('table_name').'.COL_BAND, '.$this->config->item('table_name').'.COL_FREQ, '.$this->config->item('table_name').'.COL_TIME_ON, '.$this->config->item('table_name').'.COL_RST_RCVD, '.$this->config->item('table_name').'.COL_RST_SENT, '.$this->config->item('table_name').'.COL_MODE, '.$this->config->item('table_name').'.COL_SUBMODE, '.$this->config->item('table_name').'.COL_PRIMARY_KEY, '.$this->config->item('table_name').'.COL_SAT_NAME, '.$this->config->item('table_name').'.COL_GRIDSQUARE, '.$this->config->item('table_name').'.COL_QSL_RCVD, '.$this->config->item('table_name').'.COL_EQSL_QSL_RCVD, '.$this->config->item('table_name').'.COL_EQSL_QSL_SENT, '.$this->config->item('table_name').'.COL_QSL_SENT, '.$this->config->item('table_name').'.COL_STX, '.$this->config->item('table_name').'.COL_STX_STRING, '.$this->config->item('table_name').'.COL_SRX, '.$this->config->item('table_name').'.COL_SRX_STRING, '.$this->config->item('table_name').'.COL_LOTW_QSL_SENT, '.$this->config->item('table_name').'.COL_LOTW_QSL_RCVD, '.$this->config->item('table_name').'.COL_VUCC_GRIDS, '.$this->config->item('table_name').'.COL_MY_GRIDSQUARE, '.$this->config->item('table_name').'.COL_CONTEST_ID, '.$this->config->item('table_name').'.COL_STATE, '.$this->config->item('table_name').'.COL_QRZCOM_QSO_UPLOAD_STATUS, '.$this->config->item('table_name').'.COL_QRZCOM_QSO_DOWNLOAD_STATUS, '.$this->config->item('table_name').'.COL_CLUBLOG_QSO_UPLOAD_STATUS, '.$this->config->item('table_name').'.COL_CLUBLOG_QSO_DOWNLOAD_STATUS, '.$this->config->item('table_name').'.COL_POTA_REF, '.$this->config->item('table_name').'.COL_IOTA, '.$this->config->item('table_name').'.COL_SOTA_REF, '.$this->config->item('table_name').'.COL_WWFF_REF, '.$this->config->item('table_name').'.COL_OPERATOR, '.$this->config->item('table_name').'.COL_COUNTRY, station_profile.*');
+			$this->db->select(''.$this->config->item('table_name').'.COL_CALL, '.$this->config->item('table_name').'.COL_BAND, '.$this->config->item('table_name').'.COL_FREQ, '.$this->config->item('table_name').'.COL_TIME_ON, '.$this->config->item('table_name').'.COL_RST_RCVD, '.$this->config->item('table_name').'.COL_RST_SENT, '.$this->config->item('table_name').'.COL_MODE, '.$this->config->item('table_name').'.COL_SUBMODE, '.$this->config->item('table_name').'.COL_PRIMARY_KEY, '.$this->config->item('table_name').'.COL_SAT_NAME, '.$this->config->item('table_name').'.COL_GRIDSQUARE, '.$this->config->item('table_name').'.COL_QSL_RCVD, '.$this->config->item('table_name').'.COL_EQSL_QSL_RCVD, '.$this->config->item('table_name').'.COL_EQSL_QSL_SENT, '.$this->config->item('table_name').'.COL_QSL_SENT, '.$this->config->item('table_name').'.COL_STX, '.$this->config->item('table_name').'.COL_STX_STRING, '.$this->config->item('table_name').'.COL_SRX, '.$this->config->item('table_name').'.COL_SRX_STRING, '.$this->config->item('table_name').'.COL_LOTW_QSL_SENT, '.$this->config->item('table_name').'.COL_LOTW_QSL_RCVD, '.$this->config->item('table_name').'.COL_VUCC_GRIDS, '.$this->config->item('table_name').'.COL_MY_GRIDSQUARE, '.$this->config->item('table_name').'.COL_CONTEST_ID, '.$this->config->item('table_name').'.COL_STATE, '.$this->config->item('table_name').'.COL_QRZCOM_QSO_UPLOAD_STATUS, '.$this->config->item('table_name').'.COL_QRZCOM_QSO_DOWNLOAD_STATUS, '.$this->config->item('table_name').'.COL_CLUBLOG_QSO_UPLOAD_STATUS, '.$this->config->item('table_name').'.COL_CLUBLOG_QSO_DOWNLOAD_STATUS, '.$this->config->item('table_name').'.COL_POTA_REF, '.$this->config->item('table_name').'.COL_IOTA, '.$this->config->item('table_name').'.COL_SOTA_REF, '.$this->config->item('table_name').'.COL_WWFF_REF, '.$this->config->item('table_name').'.COL_OPERATOR, '.$this->config->item('table_name').'.COL_COUNTRY, station_profile.*, satellite.displayname AS sat_displayname');
 			$this->db->from($this->config->item('table_name'));
 
 			$this->db->join('station_profile', 'station_profile.station_id = '.$this->config->item('table_name').'.station_id');
+			$this->db->join('satellite', 'satellite.name = '.$this->config->item('table_name').'.COL_SAT_NAME', 'left outer');
 			$this->db->where_in('station_profile.station_id', $logbooks_locations_array);
 
 			$this->db->group_start();
@@ -917,10 +918,22 @@ class Logbook extends CI_Controller {
 	}
 
 	function querydb($id) {
+		$this->db->select('dxcc_entities.adif, lotw_users.callsign, COL_BAND, COL_CALL, COL_CLUBLOG_QSO_DOWNLOAD_DATE,
+			COL_CLUBLOG_QSO_DOWNLOAD_STATUS, COL_CLUBLOG_QSO_UPLOAD_DATE, COL_CLUBLOG_QSO_UPLOAD_STATUS,
+			COL_CONTEST_ID, COL_DISTANCE, COL_EQSL_QSL_RCVD, COL_EQSL_QSLRDATE, COL_EQSL_QSLSDATE, COL_EQSL_QSL_SENT,
+			COL_FREQ, COL_GRIDSQUARE, COL_IOTA, COL_LOTW_QSL_RCVD, COL_LOTW_QSLRDATE, COL_LOTW_QSLSDATE,
+			COL_LOTW_QSL_SENT, COL_MODE, COL_NAME, COL_OPERATOR, COL_POTA_REF, COL_PRIMARY_KEY,
+			COL_QRZCOM_QSO_DOWNLOAD_DATE, COL_QRZCOM_QSO_DOWNLOAD_STATUS, COL_QRZCOM_QSO_UPLOAD_DATE,
+			COL_QRZCOM_QSO_UPLOAD_STATUS, COL_QSL_RCVD, COL_QSL_RCVD_VIA, COL_QSLRDATE, COL_QSLSDATE, COL_QSL_SENT,
+			COL_QSL_SENT_VIA, COL_QSL_VIA, COL_RST_RCVD, COL_RST_SENT, COL_SAT_NAME, COL_SOTA_REF, COL_SRX,
+			COL_SRX_STRING, COL_STATE, COL_STX, COL_STX_STRING, COL_SUBMODE, COL_TIME_ON, COL_VUCC_GRIDS, COL_WWFF_REF,
+			dxcc_entities.end, lotw_users.lastupload, satellite.displayname AS sat_displayname, station_profile.station_callsign,
+			station_profile.station_gridsquare, station_profile.station_profile_name, dxcc_entities.name');
 		$this->db->from($this->config->item('table_name'));
 		$this->db->join('station_profile', 'station_profile.station_id = '.$this->config->item('table_name').'.station_id');
 		$this->db->join('dxcc_entities', 'dxcc_entities.adif = '.$this->config->item('table_name').'.COL_DXCC', 'left outer');
 		$this->db->join('lotw_users', 'lotw_users.callsign = '.$this->config->item('table_name').'.col_call', 'left outer');
+		$this->db->join('satellite', 'satellite.name = '.$this->config->item('table_name').'.COL_SAT_NAME', 'left outer');
 		$this->db->group_start();
 		$this->db->like(''.$this->config->item('table_name').'.COL_CALL', $id);
 		$this->db->or_like(''.$this->config->item('table_name').'.COL_GRIDSQUARE', $id);
@@ -1304,8 +1317,8 @@ class Logbook extends CI_Controller {
 		case 'POTA':    $ret.= '<td>' . ($row->COL_POTA_REF) . '</td>'; break;
 		case 'Grid':    $ret.= '<td>' . $this->part_QrbCalcLink($row->COL_MY_GRIDSQUARE, $row->COL_VUCC_GRIDS, $row->COL_GRIDSQUARE) . '</td>'; break;
 		case 'Distance':    $ret.= '<td>' . (($row->COL_DISTANCE ?? '' != '') ? $row->COL_DISTANCE . '&nbsp;km' : '') . '</td>'; break;
-		case 'Band':    $ret.= '<td>'; if($row->COL_SAT_NAME != null) { $ret.= '<a href="https://db.satnogs.org/search/?q='.$row->COL_SAT_NAME.'" target="_blank">'.$row->COL_SAT_NAME.'</a></td>'; } else { $ret.= strtolower($row->COL_BAND); } $ret.= '</td>'; break;
-		case 'Frequency':    $ret.= '<td>'; if($row->COL_SAT_NAME != null) { $ret.= '<a href="https://db.satnogs.org/search/?q='.$row->COL_SAT_NAME.'" target="_blank">'.$row->COL_SAT_NAME.'</a></td>'; } else { if($row->COL_FREQ != null) { $ret.= $this->frequency->qrg_conversion($row->COL_FREQ); } else { $ret.= strtolower($row->COL_BAND); } } $ret.= '</td>'; break;
+      case 'Band':    $ret.= '<td>'; if($row->COL_SAT_NAME != null) { $ret.= '<a href="https://db.satnogs.org/search/?q='.$row->COL_SAT_NAME.'" target="_blank">'.($row->sat_displayname != null ? $row->sat_displayname." (".$row->COL_SAT_NAME.")" : $row->COL_SAT_NAME).'</a></td>'; } else { $ret.= strtolower($row->COL_BAND); } $ret.= '</td>'; break;
+      case 'Frequency':    $ret.= '<td>'; if($row->COL_SAT_NAME != null) { $ret.= '<a href="https://db.satnogs.org/search/?q='.$row->COL_SAT_NAME.'" target="_blank">'.($row->sat_displayname != null ? $row->sat_displayname." (".$row->COL_SAT_NAME.")" : $row->COL_SAT_NAME).'</a></td>'; } else { if($row->COL_FREQ != null) { $ret.= $this->frequency->qrg_conversion($row->COL_FREQ); } else { $ret.= strtolower($row->COL_BAND); } } $ret.= '</td>'; break;
 		case 'State':   $ret.= '<td>' . ($row->COL_STATE) . '</td>'; break;
 		case 'Operator': $ret.= '<td>' . ($row->COL_OPERATOR) . '</td>'; break;
 		}
