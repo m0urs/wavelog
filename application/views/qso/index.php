@@ -215,22 +215,6 @@
 
               <input type="hidden" name="distance" id="distance" value="0">
 
-              <?php if ($user_iota_to_qso_tab ?? false) { ?>
-              <div class="mb-3 row">
-                <label class="col-sm-3 col-form-label" for="iota_ref"><?= __("IOTA Reference"); ?></label>
-                      <div class="col-sm-9 align-self-center">
-                      <select class="form-select" id="iota_ref" tabindex="11" name="iota_ref">
-                          <option value =""></option>
-                          <?php
-                          foreach($iota as $i){
-                              echo '<option value=' . $i->tag . '>' . $i->tag . ' - ' . $i->name . '</option>';
-                          }
-                          ?>
-                      </select>
-                      </div>
-              </div>
-              <?php } ?>
-
               <?php if ($user_pota_to_qso_tab ?? false) { ?>
               <div class="mb-3 row">
                 <label class="col-sm-3 col-form-label" for="pota_ref"><?= __("POTA Reference(s)"); ?></label>
@@ -264,6 +248,22 @@
                 <div class="col-sm-2 align-self-center">
                   <small id="sota_info" class="btn btn-secondary spw-buttons"></small>
                 </div>
+              </div>
+              <?php } ?>
+
+              <?php if ($user_iota_to_qso_tab ?? false) { ?>
+              <div class="mb-3 row">
+                <label class="col-sm-3 col-form-label" for="iota_ref"><?= __("IOTA Reference"); ?></label>
+                      <div class="col-sm-9 align-self-center">
+                      <select class="form-select" id="iota_ref" tabindex="11" name="iota_ref">
+                          <option value =""></option>
+                          <?php
+                          foreach($iota as $i){
+                              echo '<option value=' . $i->tag . '>' . $i->tag . ' - ' . $i->name . '</option>';
+                          }
+                          ?>
+                      </select>
+                      </div>
               </div>
               <?php } ?>
 
