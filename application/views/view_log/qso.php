@@ -469,6 +469,13 @@
                     </tr>
                     <?php } ?>
 
+                    <?php if($row->COL_REGION != null) { ?>
+                    <tr>
+                        <td><?= __("Region"); ?></td>
+                        <td><?php echo $this->logbook_model->getLongRegion($row->COL_REGION).' ('.$row->COL_REGION.')'; ?></td>
+                    </tr>
+                    <?php } ?>
+
                     <?php if($row->COL_EMAIL != null) { ?>
                     <tr>
                         <td><?= __("E-mail"); ?></td>
@@ -578,15 +585,15 @@
                             $hashtags .= " #".$row->COL_SIG." ".$row->COL_SIG_INFO;
                         }
                         if (!isset($distance)) {
-                            $twitter_string = urlencode("Just worked ".$row->COL_CALL." ");
+                            $twitter_string = "Just worked ".$row->COL_CALL." ";
                             if ($row->COL_DXCC != 0) {
-                               $twitter_string .= urlencode("in ".ucwords(strtolower(($row->COL_COUNTRY)))." ");
+                               $twitter_string .= "in ".ucwords(strtolower(($row->COL_COUNTRY)))." ";
                             }
-                            $twitter_string .= urlencode("on ".$twitter_band_sat." using ".($row->COL_SUBMODE==null?$row->COL_MODE:$row->COL_SUBMODE)." ".$hashtags);
+                            $twitter_string .= "on ".$twitter_band_sat." using ".($row->COL_SUBMODE==null?$row->COL_MODE:$row->COL_SUBMODE)." ".$hashtags;
                         } else {
-                            $twitter_string = urlencode("Just worked ".$row->COL_CALL." ");
+                            $twitter_string = "Just worked ".$row->COL_CALL." ";
                             if ($row->COL_DXCC != 0) {
-                               $twitter_string .= urlencode("in ".ucwords(strtolower(($row->COL_COUNTRY)))." ");
+                               $twitter_string .= "in ".ucwords(strtolower(($row->COL_COUNTRY)))." ";
                                if ($dxccFlag != null) {
                                   $twitter_string .= $dxccFlag." ";
                                }
@@ -603,13 +610,10 @@
                                   $distancestring = "(Grids: ".$row->COL_VUCC_GRIDS.")";
                                }
                             }
-                            $twitter_string .= urlencode($distancestring." on ".$twitter_band_sat." using ".($row->COL_SUBMODE==null?$row->COL_MODE:$row->COL_SUBMODE)." ".$hashtags);
+                            $twitter_string .= $distancestring." on ".$twitter_band_sat." using ".($row->COL_SUBMODE==null?$row->COL_MODE:$row->COL_SUBMODE)." ".$hashtags;
                         }
                     ?>
-
-                    <div style="display: inline-block;"><a class="btn btn-primary twitter-share-button" target="_blank" href="https://twitter.com/intent/tweet?text=<?php echo $twitter_string; ?>"><i class="fab fa-twitter"></i> Tweet</a></div>
-                    <?php if($this->session->userdata('user_mastodon_url') != null) { echo '<div style="display: inline-block;"><a class="btn btn-primary twitter-share-button" target="_blank" href="'.$this->session->userdata('user_mastodon_url').'/share?text='.$twitter_string.'"><i class="fab fa-mastodon"></i> Toot</a></div>'; } ?>
-
+                    <button class="btn btn-primary" onClick='shareModal(<?php echo json_encode(['qso' => $row, 'twitter_string' => $twitter_string]); ?>);'><i class="fas fa-share-square"></i> <?= __("Share"); ?></button>
                 </div>
             </div>
         </div>
