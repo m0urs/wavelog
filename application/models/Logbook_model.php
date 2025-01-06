@@ -1490,7 +1490,7 @@ class Logbook_model extends CI_Model {
 			'COL_ANT_EL' => $this->input->post('ant_el') != '' ? $this->input->post('ant_el') : null,
 			'station_id' => $stationId,
 			'COL_STATION_CALLSIGN' => $stationCallsign,
-			'COL_OPERATOR' => $this->input->post('operator_callsign'),
+			'COL_OPERATOR' => $this->input->post('operator_callsign') ?? $qso->COL_OPERATOR,
 			'COL_STATE' => $this->input->post('input_state_edit'),
 			'COL_CNTY' => $uscounty,
 			'COL_MY_IOTA' => $iotaRef,
@@ -2325,6 +2325,33 @@ class Logbook_model extends CI_Model {
 		return $query->num_rows();
 	}
 
+	function last_worked_callsign_in_logbook($callsign, $StationLocationsArray = null, $band = null) {
+
+		if ($StationLocationsArray == null) {
+			$this->load->model('logbooks_model');
+			$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		} else {
+			$logbooks_locations_array = $StationLocationsArray;
+		}
+
+		$this->db->select('COL_TIME_ON as LAST_QSO,COL_MODE as LAST_MODE');
+		$this->db->where_in('station_id', $logbooks_locations_array);
+		$this->db->where('COL_CALL', $callsign);
+
+		$band = ($band == 'All') ? null : $band;
+		if ($band != null && $band != 'SAT') {
+			$this->db->where('COL_BAND', $band);
+		} else if ($band == 'SAT') {
+			// Where col_sat_name is not empty
+			$this->db->where('COL_SAT_NAME !=', '');
+		}
+		$this->db->order_by('COL_TIME_ON desc');
+		$this->db->limit('1');
+		$query = $this->db->get($this->config->item('table_name'));
+
+		return $query->result();
+	}
+
 	function check_if_callsign_worked_in_logbook($callsign, $StationLocationsArray = null, $band = null) {
 
 		if ($StationLocationsArray == null) {
@@ -3093,12 +3120,6 @@ class Logbook_model extends CI_Model {
 				return $row->count;
 			}
 		}
-	}
-
-	/* Return the list of modes in the logbook */
-	function get_modes() {
-		$query = $this->db->query('select distinct(COL_MODE) from ' . $this->config->item('table_name') . ' order by COL_MODE');
-		return $query;
 	}
 
 	/* Return total number of QSOs per band */
@@ -4195,6 +4216,14 @@ class Logbook_model extends CI_Model {
 				$qslmsg = $station_qslmsg;
 			}
 
+			// Only import SIG_INFO and SIG_INFO_INTL if SIG is set. Discard otherwise as we do not now which activity group the reference belongs to
+			if (empty($record['sig'])) {
+				$sig_info = $sig_info_intl = '';
+			} else {
+				$sig_info = $record['sig_info'] ?? '';
+				$sig_info_intl = $record['sig_info_intl'] ?? '';
+			}
+
 			// Validate Clublog-Fields
 			if ($markClublog != NULL) {
 				$input_clublog_qsl_sent = "Y";
@@ -4266,7 +4295,7 @@ class Logbook_model extends CI_Model {
 
 
 			if ($operatorName != false) {
-				$operatorName = $this->session->userdata('user_callsign');
+				$operatorName = $this->session->userdata('operator_callsign');
 			} else {
 				$operatorName = (!empty($record['operator'])) ? $record['operator'] : '';
 			}
@@ -4455,8 +4484,8 @@ class Logbook_model extends CI_Model {
 				'COL_SAT_NAME' => (!empty($record['sat_name'])) ? $record['sat_name'] : '',
 				'COL_SFI' => (!empty($record['sfi'])) ? $record['sfi'] : null,
 				'COL_SIG' => (!empty($record['sig'])) ? $record['sig'] : '',
-				'COL_SIG_INFO' => (!empty($record['sig_info'])) ? $record['sig_info'] : '',
-				'COL_SIG_INFO_INTL' => (!empty($record['sig_info_intl'])) ? $record['sig_info_intl'] : '',
+				'COL_SIG_INFO' => $sig_info,
+				'COL_SIG_INFO_INTL' => $sig_info_intl,
 				'COL_SIG_INTL' => (!empty($record['sig_intl'])) ? $record['sig_intl'] : '',
 				'COL_SILENT_KEY' => (!empty($record['silent_key'])) ? $record['silent_key'] : '',
 				'COL_SKCC' => (!empty($record['skcc'])) ? $record['skcc'] : '',

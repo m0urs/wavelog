@@ -142,7 +142,7 @@ function getDistance($distance) {
 		</div>
 	<?php } ?>
 
-	<?php if($this->optionslib->get_option('dashboard_banner') != "false") { ?>
+	<?php if($this->optionslib->get_option('dashboard_banner') != "false" && $this->session->userdata('clubstation') == 0) { ?>
 	<?php if($todays_qsos >= 1) { ?>
 		<div class="alert alert-success" role="alert" style="margin-top: 1rem;">
 			<?= sprintf(
@@ -173,13 +173,11 @@ function getDistance($distance) {
 		<?php
 			if($lotw_cert_expired == true) { ?>
 			<div class="alert alert-danger" role="alert">
-				<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-hourglass-end"></i> <?= __("At least one of your LoTW certificates is expired!"); ?>
+				<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-hourglass-end"></i> <?= sprintf(_pgettext("LoTW Warning", "At least one of your %sLoTW certificates%s is expired!"), '<u><a href="' . site_url('lotw') . '">', "</a></u>"); ?>
 			</div>
-		<?php } ?>
-
-		<?php if($lotw_cert_expiring == true) { ?>
+		<?php } elseif($lotw_cert_expiring == true) { ?>
 			<div class="alert alert-warning" role="alert">
-				<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-hourglass-half"></i> <?= __("At least one of your LoTW certificates is about to expire!"); ?>
+				<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-hourglass-half"></i> <?= sprintf(_pgettext("LoTW Warning", "At least one of your %sLoTW certificates%s is about to expire!"), '<u><a href="' . site_url('lotw') . '">', "</a></u>"); ?>
 			</div>
 		<?php } ?>
 	<?php } ?>

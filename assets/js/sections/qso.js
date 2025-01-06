@@ -882,12 +882,13 @@ $('#start_date').on('change', function () {
 
 /* on mode change */
 $('.mode').on('change', function () {
-	if ($('#radio').val() == 0) {
+	if ($('#radio').val() == 0 && $('#sat_name').val() == '') {
 		$.get(base_url + 'index.php/qso/band_to_freq/' + $('#band').val() + '/' + $('.mode').val(), function (result) {
 			$('#frequency').val(result).trigger("change");
 		});
+		$('#frequency_rx').val("");
 	}
-	$('#frequency_rx').val("");
+	$("#callsign").blur();
 });
 
 /* Calculate Frequency */
@@ -904,6 +905,7 @@ $('#band').on('change', function () {
 	$("#sat_name").val("");
 	$("#sat_mode").val("");
 	set_qrg();
+	$("#callsign").blur();
 });
 
 /* On Key up Calculate Bearing and Distance */
