@@ -784,7 +784,6 @@ class Logbook_model extends CI_Model {
 			// No point in fetching hrdlog code or qrz api key and qrzrealtime setting if we're skipping the export
 			if (!$skipexport) {
 
-
 				$result = $this->exists_clublog_credentials($data['station_id']);
 				if (isset($result->ucp) && isset($result->ucn) && (($result->ucp ?? '') != '') && (($result->ucn ?? '') != '') && ($result->clublogrealtime == 1)) {
 					if (!$this->load->is_loaded('AdifHelper')) {
@@ -792,9 +791,13 @@ class Logbook_model extends CI_Model {
 					}
 					$qso = $this->get_qso($last_id, true)->result();
 
+					if (!$this->load->is_loaded('clublog_model')) {
+						$this->load->model('clublog_model');
+					}
+
 					$adif = $this->adifhelper->getAdifLine($qso[0]);
-					$result = $this->push_qso_to_clublog($result->ucn, $result->ucp, $data['COL_STATION_CALLSIGN'], $adif);
-					if (($result['status'] == 'OK') || (($result['status'] == 'error') || ($result['status'] == 'duplicate') || ($result['status'] == 'auth_error'))) {
+					$result = $this->clublog_model->push_qso_to_clublog($result->ucn, $result->ucp, $data['COL_STATION_CALLSIGN'], $adif);
+					if ($result['status'] == 'OK') {
 						$this->mark_clublog_qsos_sent($last_id);
 					}
 				}
@@ -923,40 +926,6 @@ class Logbook_model extends CI_Model {
 		} else {
 			return false;
 		}
-	}
-
-	function push_qso_to_clublog($cl_username, $cl_password, $station_callsign, $adif) {
-
-		// initialise the curl request
-		$returner = [];
-		$request = curl_init('https://clublog.org/realtime.php');
-
-		curl_setopt($request, CURLOPT_POST, true);
-		curl_setopt(
-			$request,
-			CURLOPT_POSTFIELDS,
-			array(
-				'email' => $cl_username,
-				'password' => $cl_password,
-				'callsign' => $station_callsign,
-				'adif' => $adif,
-				'api' => "608df94896cb9c5421ae748235492b43815610c9",
-			)
-		);
-
-		// output the response
-		curl_setopt($request, CURLOPT_RETURNTRANSFER, true);
-		$response = curl_exec($request);
-		$info = curl_getinfo($request);
-
-		// If Clublog Accepts mark the QSOs
-		if (preg_match('/\bOK\b/', $response)) {
-			$returner['status'] = 'OK';
-		} else {
-			$returner['status'] = $response;
-		}
-		curl_close($request);
-		return ($returner);
 	}
 
 	/*
@@ -1560,19 +1529,6 @@ class Logbook_model extends CI_Model {
 		$this->db->update($this->config->item('table_name'), $data);
 	}
 
-	/* Return last 10 QSOs */
-	function last_ten() {
-		$this->load->model('logbooks_model');
-		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
-
-		$this->db->select('COL_CALL, COL_BAND, COL_FREQ, COL_TIME_ON, COL_RST_RCVD, COL_RST_SENT, COL_MODE, COL_SUBMODE, COL_NAME, COL_COUNTRY, COL_PRIMARY_KEY, COL_SAT_NAME');
-		$this->db->where_in('station_id', $logbooks_locations_array);
-		$this->db->order_by("COL_TIME_ON", "desc");
-		$this->db->limit(10);
-
-		return $this->db->get($this->config->item('table_name'));
-	}
-
 	/* Show custom number of qsos */
 	function last_custom($num) {
 		$this->load->model('logbooks_model');
@@ -1583,6 +1539,7 @@ class Logbook_model extends CI_Model {
 			$this->db->join('dxcc_entities', $this->config->item('table_name') . '.col_dxcc = dxcc_entities.adif', 'left outer');
 			$this->db->where_in('station_id', $logbooks_locations_array);
 			$this->db->order_by("COL_TIME_ON", "desc");
+			$this->db->order_by("COL_PRIMARY_KEY", "desc");
 			$this->db->limit($num);
 
 			return $this->db->get($this->config->item('table_name'));
@@ -2290,7 +2247,7 @@ class Logbook_model extends CI_Model {
 			    LIMIT ?) hrd
 			    JOIN station_profile ON station_profile.station_id = hrd.station_id
 			    LEFT JOIN dxcc_entities ON hrd.col_dxcc = dxcc_entities.adif
-			    ORDER BY col_time_on DESC";
+			    ORDER BY col_time_on DESC, col_primary_key DESC";
 			$binding[] = $num * 1;
 			$query = $this->db->query($sql, $binding);
 
@@ -3171,6 +3128,30 @@ class Logbook_model extends CI_Model {
 
 		$query = $this->db->get($this->config->item('table_name'));
 
+		return $query;
+	}
+
+	/* Return total number of QSOs per operator */
+	function total_operators($yr = 'All') {
+
+		//Load logbook model and get station locations
+		$this->load->model('logbooks_model');
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+
+		if (!$logbooks_locations_array) {
+			return null;
+		}
+
+		//get statistics from database
+		$this->db->select('IFNULL(IF(COL_OPERATOR = "", COL_STATION_CALLSIGN, COL_OPERATOR), COL_STATION_CALLSIGN) AS operator, count( * ) AS count', FALSE);
+		$this->db->where_in('station_id', $logbooks_locations_array);
+		$this->where_year($yr);
+		$this->db->group_by('operator');
+		$this->db->order_by('count', 'DESC');
+
+		$query = $this->db->get($this->config->item('table_name'));
+
+		//return result
 		return $query;
 	}
 
@@ -4714,7 +4695,8 @@ class Logbook_model extends CI_Model {
      */
 	public function check_dxcc_table($call, $date) {
 
-		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^A$|^M$/';
+		$date = date("Y-m-d", strtotime($date));
+		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^B$|^A$|^M$/';
 
 		$dxcc_exceptions = $this->db->select('`entity`, `adif`, `cqz`, `cont`')
 			->where('`call`', $call)
@@ -4805,9 +4787,10 @@ class Logbook_model extends CI_Model {
 
 	public function dxcc_lookup($call, $date) {
 
-		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^A$|^M$|^LH$/';
+		$date = date("Y-m-d", strtotime($date));
+		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^B$|^A$|^M$|^LH$/';
 
-		$dxcc_exceptions = $this->db->select('`entity`, `adif`, `cqz`,`cont`')
+		$dxcc_exceptions = $this->db->select('`entity`, `adif`, `cqz`,`cont`,`long`,`lat`')
 			->where('`call`', $call)
 			->where('(start <= ', $date)
 			->or_where('start is null)', NULL, false)
@@ -4914,7 +4897,7 @@ class Logbook_model extends CI_Model {
 		$c = '';
 
 		$lidadditions = '/^QRP$|^LGT$/';
-		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^A$|^M$|^LH$/';
+		$csadditions = '/^X$|^D$|^T$|^P$|^R$|^B$|^A$|^M$|^LH$/';
 		$noneadditions = '/^MM$|^AM$/';
 
 		# First check if the call is in the proper format, A/B/C where A and C
@@ -5568,9 +5551,71 @@ class Logbook_model extends CI_Model {
 		}
 		return '';
 	}
+
+	function getContestQSO(array $station_ids, string $station_callsign, string $contest_id, string $callsign, string $band, string $mode, string $date, string $time)
+	{
+
+		//load QSO table
+		$this->db->select('*');
+		$this->db->from($this->config->item('table_name'));
+
+		//load only for given station_ids
+		$this->db->where_in('station_id', $station_ids);
+
+		//load only for the station_callsign given
+		$this->db->where('COL_STATION_CALLSIGN', xss_clean($station_callsign));
+
+		//load only for the given contest id
+		$this->db->where('COL_CONTEST_ID', xss_clean($contest_id));
+
+		//load only for this qso partners callsign
+		$this->db->where('COL_CALL', xss_clean($callsign));
+
+		//load only for given band (no cleaning necessary because provided by wavelog itself)
+		$this->db->where('COL_BAND', $band);
+
+		//load only for specific mode if the mode is determinate. If not, omit it. In most cases, that should be fine. Also provided by wavelog itself, so no cleaning.
+		if($mode != '') {
+			$this->db->where('COL_MODE', $mode);
+		}
+
+		//prepare datetime from format '2099-12-31 13:47' to be usable in a performant query
+		$datetime_raw = $date . ' ' . substr($time, 0, 2) . ':' . substr($time, 2, 2);
+		$datetime = new DateTime($datetime_raw,new DateTimeZone('UTC'));
+		$from_datetime = $datetime->format('Y-m-d H:i:s');
+		$datetime->add(new DateInterval('PT1M'));
+		$to_datetime = $datetime->format('Y-m-d H:i:s');
+
+		//load only QSOs during this minute
+		$this->db->where('COL_TIME_ON >=', $from_datetime);
+		$this->db->where('COL_TIME_ON <', $to_datetime);
+
+		//return whatever is left
+		return $this->db->get();
+	}
+
+	function set_contest_fields($qso_primary_key, ?int $stx, ?string $stxstring, ?int $srx, ?string $srxstring) {
+
+		//assemble data fields from input
+		$data = $data = array(
+			'COL_STX' => $stx,
+			'COL_STX_STRING' => $stxstring == null ? null : substr($stxstring, 0, 32),
+			'COL_SRX' => $srx,
+			'COL_SRX_STRING' => $srxstring == null ? null : substr($srxstring, 0, 32)
+		);
+
+		//narrow db operation down to 1 QSO
+		$this->db->where(array('COL_PRIMARY_KEY' => $qso_primary_key));
+
+		//update data and return
+		$this->db->update($this->config->item('table_name'), $data);
+		return;
+	}
+
 }
 
 function validateADIFDate($date, $format = 'Ymd') {
 	$d = DateTime::createFromFormat($format, $date);
 	return $d && $d->format($format) == $date;
 }
+

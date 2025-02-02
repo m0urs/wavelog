@@ -214,7 +214,7 @@ function getDistance($distance) {
   <div class="col-sm-8">
 
   	<div class="table-responsive">
-    	<table class="table table-striped table-hover border-top">
+    	<table class="table table-striped table-hover border-top mb-2">
 
     		<thead>
 				<tr class="titles">
@@ -235,8 +235,8 @@ function getDistance($distance) {
 
 			<?php
 			$i = 0;
-			if(!empty($last_five_qsos) > 0) {
-			foreach ($last_five_qsos->result() as $row) { ?>
+			if(!empty($last_qsos_list) > 0) {
+			foreach ($last_qsos_list->result() as $row) { ?>
 				<?php  echo '<tr id="qso_'.$row->COL_PRIMARY_KEY.'" class="tr'.($i & 1).'">'; ?>
 
 					<?php
@@ -270,6 +270,9 @@ function getDistance($distance) {
 			<?php $i++; } } ?>
 		</table>
 	</div>
+	<small class="mb-3 me-2" style="float: right;">
+		<?= sprintf(_ngettext("Max. %d previous contact is shown", "Max. %d previous contacts are shown", intval($last_qso_count)), intval($last_qso_count)); ?>
+	</small>
   </div>
 
   <div class="col-sm-4">

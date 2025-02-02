@@ -325,6 +325,12 @@ class User_Model extends CI_Model {
 					'winkey' => xss_clean($fields['user_winkey']),
 				);
 
+				// Hard limit safety check for last (recent) QSO count settings
+				$dashboard_last_qso_count = xss_clean($fields['user_dashboard_last_qso_count']);
+				$dashboard_last_qso_count = $dashboard_last_qso_count > DASHBOARD_QSOS_COUNT_LIMIT ? DASHBOARD_QSOS_COUNT_LIMIT : $dashboard_last_qso_count;
+				$qso_page_last_qso_count = xss_clean($fields['user_qso_page_last_qso_count']);
+				$qso_page_last_qso_count = $qso_page_last_qso_count > QSO_PAGE_QSOS_COUNT_LIMIT ? QSO_PAGE_QSOS_COUNT_LIMIT : $qso_page_last_qso_count;
+
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'hamsat','hamsat_key','api','".xss_clean($fields['user_hamsat_key'])."');");
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'hamsat','hamsat_key','workable','".xss_clean($fields['user_hamsat_workable_only'])."');");
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'qso_tab','iota','show',".(xss_clean($fields['user_iota_to_qso_tab'] ?? 'off') == "on" ? 1 : 0).");");
@@ -333,6 +339,10 @@ class User_Model extends CI_Model {
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'qso_tab','pota','show',".(xss_clean($fields['user_pota_to_qso_tab'] ?? 'off') == "on" ? 1 : 0).");");
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'qso_tab','sig','show',".(xss_clean($fields['user_sig_to_qso_tab'] ?? 'off') == "on" ? 1 : 0).");");
 				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'qso_tab','dok','show',".(xss_clean($fields['user_dok_to_qso_tab'] ?? 'off') == "on" ? 1 : 0).");");
+				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'dashboard','last_qso_count','count','".$dashboard_last_qso_count."');");
+				$this->db->query("replace into user_options (user_id, option_type, option_name, option_key, option_value) values (" . $fields['id'] . ", 'qso_tab','last_qso_count','count','".$qso_page_last_qso_count."');");
+				$this->session->set_userdata('dashboard_last_qso_count', $dashboard_last_qso_count);
+				$this->session->set_userdata('qso_page_last_qso_count', $qso_page_last_qso_count);				
 
 				// Check to see if the user is allowed to change user levels
 				if($this->session->userdata('user_type') == 99) {
@@ -361,6 +371,7 @@ class User_Model extends CI_Model {
 							if($data['user_password'] == EPASSWORDINVALID) {
 								return EPASSWORDINVALID;
 							}
+							$data['login_attempts'] = 0;
 						}
 					}
 				}
@@ -515,6 +526,8 @@ class User_Model extends CI_Model {
 			'hasQrzKey' => $this->hasQrzKey($u->row()->user_id),
 			'impersonate' => $this->session->userdata('impersonate') ?? false,
 			'clubstation' => $u->row()->clubstation,
+			'dashboard_last_qso_count' => ($this->session->userdata('dashboard_last_qso_count') ?? '') == '' ? ($this->user_options_model->get_options('dashboard', array('option_name' => 'last_qso_count', 'option_key' => 'count'))->row()->option_value ?? '') : $this->session->userdata('dashboard_last_qso_count'),
+			'qso_page_last_qso_count' => ($this->session->userdata('qso_page_last_qso_count') ?? '') == '' ? ($this->user_options_model->get_options('qso_tab', array('option_name' => 'last_qso_count', 'option_key' => 'count'))->row()->option_value ?? '') : $this->session->userdata('qso_page_last_qso_count'),
 			'source_uid' => $this->session->userdata('source_uid') ?? ''
 		);
 
@@ -609,7 +622,19 @@ class User_Model extends CI_Model {
 				return 2;
 			}
 
+			if ($this->config->item('max_login_attempts')) {
+				$maxattempts = $this->config->item('max_login_attempts');
+			} else {
+				$maxattempts = 3;
+			}
+			if ($u->row()->login_attempts > $maxattempts) {
+				$uid = $u->row()->user_id;
+				log_message('debug', "User ID: [$uid] Login rejected because of too many failed login attempts.");
+				return 3;
+			}
+
 			if($this->_auth($password, $u->row()->user_password)) {
+				$this->db->query("UPDATE users SET login_attempts = 0 WHERE user_id = ?", [$u->row()->user_id]);	// Reset failurecount
 				if (ENVIRONMENT != "maintenance") {
 					return 1;
 				} else {
@@ -619,6 +644,8 @@ class User_Model extends CI_Model {
 						return 1;
 					}
 				}
+			} else { // Update failurecount
+				$this->db->query("UPDATE users SET login_attempts = login_attempts+1 WHERE user_id = ?", [$u->row()->user_id]);
 			}
 		}
 		return 0;
@@ -657,33 +684,73 @@ class User_Model extends CI_Model {
 		}
 	}
 
+	// FUNCTION: bool unlock($user_id)
+	// Unlocks a user account after it was locked doe too many failed login attempts
+	function unlock($user_id) {
+		return $this->db->query("UPDATE users SET login_attempts = 0 WHERE user_id = ?", [$user_id]);
+	}
+
 	// FUNCTION: object users()
 	// Returns a list of users with additional counts
 	function users($club = '') {
-		$sql="  SELECT COUNT(distinct sp.station_id) AS stationcount, count(distinct sl.logbook_id) AS logbookcount, count(distinct log.col_primary_key) AS qsocount,
-			MAX(COL_TIME_ON) AS lastqso,
-			u.*
-			FROM  users u
-			LEFT OUTER JOIN station_profile sp ON (sp.user_id = u.user_id)
-			LEFT OUTER JOIN station_logbooks sl ON (sl.user_id = u.user_id)
-			LEFT OUTER JOIN ". $this->config->item('table_name') ." log on (log.station_id=sp.station_id)";
+		$qsocount_select = "";
+		$qsocount_join = "";
+		if (!($this->config->item('disable_user_stats') ?? false)) {
+			$qsocount_select = ", COALESCE(lc.qsocount, 0) AS qsocount, lc.lastqso";
+			$qsocount_join = 
+				" LEFT JOIN (
+					SELECT sp.user_id, 
+						COUNT(l.col_primary_key) AS qsocount,
+						MAX(l.COL_TIME_ON)      AS lastqso
+					FROM station_profile sp
+					JOIN " . $this->config->item('table_name') . " l ON l.station_id = sp.station_id
+					GROUP BY sp.user_id
+				) lc ON lc.user_id = u.user_id";
+		}
+		$sql = "SELECT 
+					u.user_id,
+					u.user_name,
+					u.user_firstname,
+					u.user_lastname,
+					u.user_callsign,
+					u.user_email,
+					u.user_type,
+					u.last_seen,
+					u.login_attempts,
+					u.clubstation,
+					COALESCE(sp_count.stationcount, 0)    	AS stationcount,
+					COALESCE(sl_count.logbookcount, 0)   	AS logbookcount
+					".$qsocount_select."
+				FROM users u
+				LEFT JOIN (
+					SELECT user_id, COUNT(*) AS stationcount
+					FROM station_profile
+					GROUP BY user_id
+				) sp_count ON sp_count.user_id = u.user_id
+				LEFT JOIN (
+					SELECT user_id, COUNT(*) AS logbookcount
+					FROM station_logbooks
+					GROUP BY user_id
+				) sl_count ON sl_count.user_id = u.user_id"
+				 .$qsocount_join;
+
 		if ($this->config->item('special_callsign')) {
-			if ($club == 'is_club') {
-				$sql.=' WHERE clubstation=1';
+			if ($club === 'is_club') {
+				$sql .= " WHERE u.clubstation = 1";
 			} else {
-				$sql.=' WHERE clubstation!=1';
+				$sql .= " WHERE u.clubstation != 1";
 			}
 		}
-		$sql.=" GROUP BY u.user_id";
+
 		$result = $this->db->query($sql);
 		if ($this->config->item('special_callsign')) {
-			if ($club == 'is_club') {
+			if ($club === 'is_club' && !($this->config->item('disable_user_stats') ?? false)) {
 				foreach ($result->result() as &$row) {
-					$row->lastoperator=$this->get_last_op($row->user_id,$row->lastqso);
+					$row->lastoperator = $this->get_last_op($row->user_id, $row->lastqso);
 				}
 			} else {
 				foreach ($result->result() as &$row) {
-					$row->lastoperator='';
+					$row->lastoperator = '';   				// Important: If 'disable_user_stats' is set to true, the admin won't see the last operator of a clubstation
 				}
 			}
 		}
@@ -746,7 +813,8 @@ class User_Model extends CI_Model {
 		$data = array(
 			'user_password' => $this->_hash($password),
 			'reset_password_code' => NULL,
-			'reset_password_date' => NULL
+			'reset_password_date' => NULL,
+			'login_attempts' => 0
 		);
 
 		$this->db->where('reset_password_code', $reset_code);

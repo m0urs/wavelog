@@ -109,7 +109,7 @@ $config['auth_level'][99] = 'Administrator';
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = 'http://localhost/logbook';
+$config['base_url'] = 'http://localhost/logbook/';
 
 /*
 |--------------------------------------------------------------------------
@@ -769,3 +769,22 @@ $config['disable_version_check'] = false;
  */
 
 $config['enable_eqsl_massdownload'] = false;
+
+/*
+|--------------------------------------------------------------------------
+| Lock Account after n failed login-attempts
+|--------------------------------------------------------------------------
+ */
+
+$config['max_login_attempts'] = 3;
+
+/*
+|--------------------------------------------------------------------------
+| Disable User QSO Count in User List (Admin Menu)
+| Reason for this setting is to prevent performance issues on large installations
+| where the QSO count is not needed. Set to true to disable the QSO count. 
+| This also hides the last Operator for CLubstations. Default is false.
+|--------------------------------------------------------------------------
+ */
+
+ $config['disable_user_stats'] = false;

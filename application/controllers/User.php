@@ -25,6 +25,12 @@ class User extends CI_Controller {
 			$data['disable_impersonate'] = false;
 		}
 
+		if ($this->config->item('max_login_attempts')) {
+			$data['maxattempts'] = $this->config->item('max_login_attempts');
+		} else {
+			$data['maxattempts'] = 3;
+		}
+
 		// Get Date format
 		if($this->session->userdata('user_date_format')) {
 			// If Logged in and session exists
@@ -63,6 +69,12 @@ class User extends CI_Controller {
 			$custom_date_format = $this->config->item('qso_date_format');
 		}
 
+		if ($this->config->item('max_login_attempts')) {
+			$maxattempts = $this->config->item('max_login_attempts');
+		} else {
+			$maxattempts = 3;
+		}
+
 		if ($this->user_model->exists_by_id($data['user_id']) && $modal != '') {
 			$user = $this->user_model->get_by_id($data['user_id'])->row();
 			$gettext = new Gettext;
@@ -74,6 +86,7 @@ class User extends CI_Controller {
 			$data['user_lastname'] = $user->user_lastname;
 			$data['user_language'] = $gettext->find_by('folder', $user->user_language)['name_en'];
 			$data['is_clubstation'] = $user->clubstation == 1 ? true : false;
+			$data['is_locked'] = $user->login_attempts > $maxattempts ? true : false;
 			$data['last_seen'] = $user->last_seen;
 			$data['custom_date_format'] = $custom_date_format;
 			$data['has_flossie'] = ($this->config->item('encryption_key') == 'flossie1234555541') ? true : false;
@@ -82,6 +95,24 @@ class User extends CI_Controller {
 		} else {
 			$this->session->set_flashdata('error', __("Invalid User ID or missing modal!"));
 			redirect('user');
+		}
+	}
+
+	public function unlock($uid) {
+		$this->load->model('user_model');
+		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
+
+		if ($this->user_model->exists_by_id($uid)) {
+			if ($this->user_model->unlock($uid)) {
+				$this->session->set_flashdata('success', __("User unlocked!"));
+				redirect('user');
+			} else {
+				$this->session->set_flashdata('error', __("Failed to unlock user!"));
+				redirect('user');
+			}
+		} else {
+			$this->session->set_flashdata('error', __("User not found!"));
+			redirect('dashboard');
 		}
 	}
 
@@ -123,8 +154,6 @@ class User extends CI_Controller {
 		$this->form_validation->set_rules('user_email', 'E-mail', 'required');
 		$this->form_validation->set_rules('user_password', 'Password', 'required');
 		$this->form_validation->set_rules('user_type', 'Type', 'required');
-		// $this->form_validation->set_rules('user_firstname', 'First name', 'required');
-		// $this->form_validation->set_rules('user_lastname', 'Last name', 'required');
 		$this->form_validation->set_rules('user_callsign', 'Callsign', 'required');
 		$this->form_validation->set_rules('user_locator', 'Locator', 'required');
 		$this->form_validation->set_rules('user_locator', 'Locator', 'callback_check_locator');
@@ -147,6 +176,14 @@ class User extends CI_Controller {
 		// Get timezones
 		$data['timezones'] = $this->user_model->timezones();
 		$data['user_language'] = 'english';
+
+		// Values for the "dashboard last QSO count" selectbox
+		$data['dashboard_last_qso_count_limit'] = DASHBOARD_QSOS_COUNT_LIMIT;
+		$data['user_dashboard_last_qso_count'] = DASHBOARD_DEFAULT_QSOS_COUNT;
+
+		// Values for the "QSO page last QSO count" selectbox
+		$data['qso_page_last_qso_count_limit'] = QSO_PAGE_QSOS_COUNT_LIMIT;
+		$data['user_qso_page_last_qso_count'] = QSO_PAGE_DEFAULT_QSOS_COUNT;
 
 		if ($this->form_validation->run() == FALSE) {
 			$data['page_title'] = __("Add User");
@@ -342,10 +379,17 @@ class User extends CI_Controller {
 		// Get timezones
 		$data['timezones'] = $this->user_model->timezones();
 
+		// Max value to be present in the "dashboard last QSO count" selectbox
+		$data['dashboard_last_qso_count_limit'] = DASHBOARD_QSOS_COUNT_LIMIT;
+
+		// Max value to be present in the "QSO page last QSO count" selectbox
+		$data['qso_page_last_qso_count_limit'] = QSO_PAGE_QSOS_COUNT_LIMIT;
+
+		$data['page_title'] = __("Edit User");
+
 		if ($this->form_validation->run() == FALSE)
 		{
-			$data['page_title'] = __("Edit User");
-
+			// Prepare data and render the user options view
 			$q = $query->row();
 
 			$data['id'] = $q->user_id;
@@ -720,11 +764,14 @@ class User extends CI_Controller {
 
 			$data['user_locations_quickswitch'] = ($this->user_options_model->get_options('header_menu', array('option_name'=>'locations_quickswitch'), $this->uri->segment(3))->row()->option_value ?? 'false');
 			$data['user_utc_headermenu'] = ($this->user_options_model->get_options('header_menu', array('option_name'=>'utc_headermenu'), $this->uri->segment(3))->row()->option_value ?? 'false');
+			$data['user_dashboard_last_qso_count'] = ($this->user_options_model->get_options('dashboard', array('option_name'=>'last_qso_count', 'option_key' => 'count'), $this->uri->segment(3))->row()->option_value ?? DASHBOARD_DEFAULT_QSOS_COUNT);
+			$data['user_qso_page_last_qso_count'] = ($this->user_options_model->get_options('qso_tab', array('option_name'=>'last_qso_count', 'option_key' => 'count'), $this->uri->segment(3))->row()->option_value ?? QSO_PAGE_DEFAULT_QSOS_COUNT);
 
 			$this->load->view('interface_assets/header', $data);
 			$this->load->view('user/edit', $data);
 			$this->load->view('interface_assets/footer', $footerData);
 		} else {
+			// Data was submitted for saving - save updated options in DB 
 			unset($data);
 			switch($this->user_model->edit($this->input->post())) {
 				// Check for errors
@@ -777,7 +824,6 @@ class User extends CI_Controller {
 					}
 					return;
 			}
-			$data['page_title'] = __("Edit User");
 
 			$this->load->view('interface_assets/header', $data);
 			$data['user_name'] = $this->input->post('user_name', true);
@@ -816,6 +862,9 @@ class User extends CI_Controller {
 			$data['user_winkey'] = $this->input->post('user_winkey');
 			$data['user_hamsat_key'] = $this->input->post('user_hamsat_key');
 			$data['user_hamsat_workable_only'] = $this->input->post('user_hamsat_workable_only');
+			$data['user_dashboard_last_qso_count'] = $this->input->post('user_dashboard_last_qso_count', true);
+			$data['user_qso_page_last_qso_count'] = $this->input->post('user_qso_page_last_qso_count', true);
+
 			$this->load->view('user/edit');
 			$this->load->view('interface_assets/footer');
 		}
@@ -1022,6 +1071,9 @@ class User extends CI_Controller {
 			
 			} else if ($login_attempt === 2) {
 				$this->session->set_flashdata('warning', __("You can't login to a clubstation directly. Use your personal account instead."));
+				redirect('user/login');
+			} else if ($login_attempt === 3) {
+				$this->session->set_flashdata('warning', __("Your account is locked, due to too many failed login-attempts. Please reset your password."));
 				redirect('user/login');
 			} else {
 				if(ENVIRONMENT == 'maintenance') {

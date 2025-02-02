@@ -1,4 +1,6 @@
 <script type="text/javascript">
+    var user_id = <?php echo $this->session->userdata('user_id'); ?>;
+
     /*
      * Custom user settings
      */
@@ -364,6 +366,11 @@ $options = json_decode($options);
 								<option value="oc"><?= __("Oceania"); ?></option>
 								<option value="invalid"><?= __("Invalid"); ?></option>
 							</select>
+                        </div>
+
+						<div <?php if (($options->comment->show ?? "true") == "false") { echo 'style="display:none"'; } ?> class="mb-3 col-lg-2 col-md-2 col-sm-3 col-xl">
+                            <label class="form-label" for="comment"><?= __("Comment"); ?></label>
+                            <input onclick="this.select()" type="text" name="comment" id="comment" class="form-control form-control-sm" value="*" placeholder="<?= __("Empty"); ?>">
                         </div>
                     </div>
                 </div>
