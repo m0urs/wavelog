@@ -2385,6 +2385,18 @@ function viewEqsl(picture, callsign) {
                         $('.table-responsive .dropdown-toggle').off('mouseenter').on('mouseenter', function () {
                             showQsoActionsMenu($(this).closest('.dropdown'));
                         });
+
+                       var target = document.body;
+                       var observer = new MutationObserver(function() {
+                               $('#contacttable_filter input').on('keyup', function (e) {
+                                       tocrappyzero=$(this).val().toUpperCase().replaceAll(/0/g, 'Ø');
+                                       $(this).val(tocrappyzero);
+                                       $(this).trigger("input");
+                               });
+                       });
+                       var config = { childList: true, subtree: true};
+                       // pass in the target node, as well as the observer options
+                       observer.observe(target, config);
                     },
                     buttons: [{
                         label: lang_admin_close,
@@ -2393,6 +2405,7 @@ function viewEqsl(picture, callsign) {
                         }
                     }]
                 });
+
             }
         });
     }
