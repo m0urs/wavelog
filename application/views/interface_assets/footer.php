@@ -279,8 +279,14 @@ function stopImpersonate_modal() {
 
 <?php if ($this->uri->segment(1) == "notes" && ($this->uri->segment(2) == "add" || $this->uri->segment(2) == "edit") ) { ?>
     <!-- Javascript used for Notes Area -->
-    <script src="<?php echo base_url() ;?>assets/plugins/quill/quill.min.js"></script>
+    <script src="<?php echo base_url() ;?>assets/plugins/easymde/easymde.min.js"></script>
     <script src="<?php echo base_url() ;?>assets/js/sections/notes.js"></script>
+<?php } ?>
+
+<?php if ($this->uri->segment(1) == "notes" && ($this->uri->segment(2) == "view") ) { ?>
+    <!-- Javascript used for Notes Area -->
+    <script src="<?php echo base_url() ;?>assets/plugins/easymde/easymde.min.js"></script>
+    <script src="<?php echo base_url() ;?>assets/js/sections/notes_view.js"></script>
 <?php } ?>
 
 <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/datatables.min.js"></script>
@@ -529,7 +535,13 @@ $(function () {
                     },
                     dom: 'Bfrtip',
                     buttons: [
-                        'csv'
+						{
+							extend: 'csv',
+							className: 'mb-1 btn btn-primary', // Bootstrap classes
+								init: function(api, node, config) {
+									$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+								},
+						}
                     ]
                 });
                 // change color of csv-button if dark mode is chosen
@@ -660,7 +672,13 @@ $(function () {
                         },
                         dom: 'Bfrtip',
                         buttons: [
-                            'csv'
+							{
+								extend: 'csv',
+								className: 'mb-1 btn btn-primary', // Bootstrap classes
+									init: function(api, node, config) {
+										$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+									},
+							}
                         ]
                     });
                     // change color of csv-button if dark mode is chosen
@@ -830,7 +848,7 @@ function showActivatorsMap(call, count, grids) {
             <?php } else { ?>
               var grid = "No";
             <?php } ?>
-            
+
             <?php printf("var dashboard_qso_count = '%d';", $this->session->userdata('dashboard_last_qso_count')) ?>
             initmap(grid,'map',{'dataPost':{'nb_qso': dashboard_qso_count}});
 
@@ -869,7 +887,13 @@ function findlotwunconfirmed(){
             },
             dom: 'Bfrtip',
             buttons: [
-                'csv'
+				{
+					extend: 'csv',
+					className: 'mb-1 btn btn-primary', // Bootstrap classes
+						init: function(api, node, config) {
+							$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+				}
             ]
         });
         // change color of csv-button if dark mode is chosen
@@ -895,7 +919,13 @@ function findincorrectcqzones() {
     },
 	    dom: 'Bfrtip',
 	    buttons: [
-		    'csv'
+			{
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
 	    ]
     });
 	    // change color of csv-button if dark mode is chosen
@@ -934,8 +964,14 @@ function findincorrectituzones() {
     },
 	    dom: 'Bfrtip',
 	    buttons: [
-		    'csv'
-	    ]
+			{
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
+]
     });
 	    // change color of csv-button if dark mode is chosen
 	    if (isDarkModeTheme()) {
@@ -1770,7 +1806,13 @@ $(document).ready(function(){
         },
         dom: 'Bfrtip',
         buttons: [
-            'csv'
+			{
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1787,7 +1829,13 @@ $(document).ready(function(){
             url: getDataTablesLanguageUrl(),
         },
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1836,7 +1884,13 @@ $('#sats').change(function(){
         },
         dom: 'Bfrtip',
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1853,7 +1907,13 @@ $('#sats').change(function(){
             url: getDataTablesLanguageUrl(),
         },
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1879,7 +1939,13 @@ $('#sats').change(function(){
         },
         dom: 'Bfrtip',
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1896,7 +1962,13 @@ $('#sats').change(function(){
             url: getDataTablesLanguageUrl(),
         },
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1922,7 +1994,13 @@ $('#sats').change(function(){
         },
         dom: 'Bfrtip',
         buttons: [
-            'csv'
+            {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
         ]
     });
 
@@ -1949,7 +2027,13 @@ $('#sats').change(function(){
             },
             dom: 'Bfrtip',
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -1966,7 +2050,13 @@ $('#sats').change(function(){
                 url: getDataTablesLanguageUrl(),
             },
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -1993,7 +2083,13 @@ $('#sats').change(function(){
             },
             dom: 'Bfrtip',
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -2010,7 +2106,13 @@ $('#sats').change(function(){
                 url: getDataTablesLanguageUrl(),
             },
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -2036,7 +2138,13 @@ $('#sats').change(function(){
             },
             dom: 'Bfrtip',
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -2053,7 +2161,13 @@ $('#sats').change(function(){
                 url: getDataTablesLanguageUrl(),
             },
             buttons: [
-                'csv'
+                {
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+			}
             ]
         });
 
@@ -2099,10 +2213,18 @@ $('#sats').change(function(){
                 dom: 'Bfrtip',
                 buttons: [
                     {
-                        extend: 'csv'
-                    },
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
                     {
                         extend: 'clear',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+						init: function(api, node, config) {
+							$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
                         text: lang_admin_clear
                     }
                 ]
@@ -2226,10 +2348,14 @@ $('#sats').change(function(){
             "order": [ 2, 'desc' ],
             dom: 'Bfrtip',
             buttons: [
-               {
-                  extend: 'clear',
-                  text: lang_admin_clear
-               }
+				{
+					extend: 'clear',
+					className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+					text: lang_admin_clear
+				}
             ]
         });
         // change color of csv-button if dark mode is chosen
@@ -2398,7 +2524,13 @@ function viewEqsl(picture, callsign) {
                             },
                             dom: 'Bfrtip',
                             buttons: [
-                                'csv'
+								{
+								extend: 'csv',
+								className: 'mb-1 btn btn-primary', // Bootstrap classes
+									init: function(api, node, config) {
+										$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+									},
+							}
                             ]
                         });
                         $('.table-responsive .dropdown-toggle').off('mouseenter').on('mouseenter', function () {
@@ -2464,7 +2596,13 @@ function viewEqsl(picture, callsign) {
                         },
 					    dom: 'Bfrtip',
 					    buttons: [
-						    'csv'
+							{
+								extend: 'csv',
+								className: 'mb-1 btn btn-primary', // Bootstrap classes
+									init: function(api, node, config) {
+										$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+								},
+							}
 					    ]
 				    });
                     $('.table-responsive .dropdown-toggle').off('mouseenter').on('mouseenter', function () {
@@ -2655,7 +2793,13 @@ function viewEqsl(picture, callsign) {
         },
         dom: 'Bfrtip',
         buttons: [
-            'csv'
+			{
+				extend: 'csv',
+				className: 'mb-1 btn btn-primary', // Bootstrap classes
+					init: function(api, node, config) {
+						$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+				},
+			}
         ]
     });
 
@@ -2708,7 +2852,13 @@ function viewEqsl(picture, callsign) {
 			},
 			dom: 'Bfrtip',
 			buttons: [
-				'csv'
+				{
+					extend: 'csv',
+					className: 'mb-1 btn btn-primary', // Bootstrap classes
+						init: function(api, node, config) {
+							$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+					},
+				}
 			]
 		});
 
@@ -2793,11 +2943,19 @@ function viewEqsl(picture, callsign) {
                 "order": [ 2, 'desc' ],
                 dom: 'Bfrtip',
                 buttons: [
-                   {
-                      extend: 'csv'
-                   },
+					{
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
                    {
                       extend: 'clear',
+					  className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
                       text: lang_admin_clear
                    }
                 ]
@@ -2872,11 +3030,19 @@ function viewEqsl(picture, callsign) {
                 "order": [ 0, 'asc' ],
                 dom: 'Bfrtip',
                 buttons: [
-                   {
-                      extend: 'csv'
-                   },
+					{
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
                    {
                       extend: 'clear',
+					  className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
                       text: lang_admin_clear
                    }
                 ]
@@ -2909,11 +3075,19 @@ function viewEqsl(picture, callsign) {
                 "order": [ 0, 'asc' ],
                 dom: 'Bfrtip',
                 buttons: [
-                   {
-                      extend: 'csv'
-                   },
+					{
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
                    {
                       extend: 'clear',
+					  className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
                       text: lang_admin_clear
                    }
                 ]
@@ -2944,11 +3118,19 @@ function viewEqsl(picture, callsign) {
                 },
                 dom: 'Bfrtip',
                 buttons: [
-                   {
-                      extend: 'csv'
-                   },
+					{
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
                    {
                       extend: 'clear',
+					  className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
                       text: lang_admin_clear
                    }
                 ]
