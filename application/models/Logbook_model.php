@@ -3727,7 +3727,7 @@ class Logbook_model extends CI_Model {
 		}
 	}
 
-	function lotw_update($datetime, $callsign, $band, $qsl_date, $qsl_status, $state, $qsl_gridsquare, $qsl_vucc_grids, $iota, $cnty, $cqz, $ituz, $station_callsign, $qsoid, $station_ids, $dxcc = null, $ant_path = null) {
+	function lotw_update($datetime, $callsign, $band, $qsl_date, $qsl_status, $state, $qsl_gridsquare, $qsl_vucc_grids, $iota, $cnty, $cqz, $ituz, $station_callsign, $qsoid, $station_ids, $dxcc = null, $country = null, $ant_path = null) {
 
 		$data = array(
 			'COL_LOTW_QSLRDATE' => $qsl_date,
@@ -3751,6 +3751,10 @@ class Logbook_model extends CI_Model {
 
 		if (($dxcc ?? '') != '') {
 			$data['COL_DXCC'] = $dxcc;
+		}
+
+		if (($country ?? '') != '') {
+			$data['COL_COUNTRY'] = $country;
 		}
 
 		if ($ituz != "") {
@@ -5688,10 +5692,21 @@ class Logbook_model extends CI_Model {
 		return;
 	}
 
+function get_sat_qso_count() {
+	$sats = array();
+	$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+	$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+	$sql = "SELECT COL_SAT_NAME, COUNT(COL_CALL) AS qsocount FROM ".$this->config->item('table_name')." WHERE station_id IN (".$location_list.") AND COL_PROP_MODE = 'SAT' AND COL_SAT_NAME != '' GROUP BY COL_SAT_NAME ORDER BY COL_SAT_NAME ASC;";
+	foreach ($this->db->query($sql)->result() as $row) {
+		$sats[$row->COL_SAT_NAME] = $row->qsocount;
+	}
+	return $sats;
+
 }
 
 function validateADIFDate($date, $format = 'Ymd') {
 	$d = DateTime::createFromFormat($format, $date);
 	return $d && $d->format($format) == $date;
+}
 }
 
