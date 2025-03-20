@@ -1628,9 +1628,6 @@ class Logbook_model extends CI_Model {
 
 	/* Callsign QRA */
 	function call_qra($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_GRIDSQUARE, COL_TIME_ON');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1673,9 +1670,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_email($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_EMAIL, COL_TIME_ON');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1738,9 +1732,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_state($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_STATE');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1762,9 +1753,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_us_county($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_CNTY');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1787,9 +1775,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_ituzone($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_ITUZ');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1811,9 +1796,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_cqzone($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_CQZ');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1835,9 +1817,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_qth($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_QTH, COL_TIME_ON');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1859,9 +1838,6 @@ class Logbook_model extends CI_Model {
 	}
 
 	function call_iota($callsign) {
-		if ($callsign !== $this->get_plaincall($callsign)) {
-			return null;
-		}
 		$this->db->select('COL_CALL, COL_IOTA, COL_TIME_ON');
 		$this->db->join('station_profile', 'station_profile.station_id = ' . $this->config->item('table_name') . '.station_id');
 		$this->db->where('COL_CALL', $callsign);
@@ -1958,8 +1934,10 @@ class Logbook_model extends CI_Model {
 			);
 
 			$this->db->where('COL_PRIMARY_KEY', $qso_id);
+			$this->db->group_start();
 			$this->db->where('COL_QSL_SENT !=','R');
-			$this->db->where('COL_QSL_SENT_VIA !=', $method);
+			$this->db->or_where('COL_QSL_SENT_VIA !=', $method);
+			$this->db->group_end();
 
 			$this->db->update($this->config->item('table_name'), $data);
 
@@ -3788,9 +3766,11 @@ class Logbook_model extends CI_Model {
 				$this->load->library('Qra');
 			}
 			if ($qsl_gridsquare != "") {
+				$data['COL_VUCC_GRIDS'] = null;
 				$data['COL_GRIDSQUARE'] = $qsl_gridsquare;
 				$data['COL_DISTANCE'] = $this->qra->distance($station_gridsquare, $qsl_gridsquare, 'K', $ant_path);
 			} elseif ($qsl_vucc_grids != "") {
+				$data['COL_GRIDSQUARE'] = null;
 				$data['COL_VUCC_GRIDS'] = $qsl_vucc_grids;
 				$data['COL_DISTANCE'] = $this->qra->distance($station_gridsquare, $qsl_vucc_grids, 'K', $ant_path);
 			}
@@ -5692,21 +5672,19 @@ class Logbook_model extends CI_Model {
 		return;
 	}
 
-function get_sat_qso_count() {
-	$sats = array();
-	$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
-	$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
-	$sql = "SELECT COL_SAT_NAME, COUNT(COL_CALL) AS qsocount FROM ".$this->config->item('table_name')." WHERE station_id IN (".$location_list.") AND COL_PROP_MODE = 'SAT' AND COL_SAT_NAME != '' GROUP BY COL_SAT_NAME ORDER BY COL_SAT_NAME ASC;";
-	foreach ($this->db->query($sql)->result() as $row) {
-		$sats[$row->COL_SAT_NAME] = $row->qsocount;
+	function get_sat_qso_count() {
+		$sats = array();
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+		$sql = "SELECT COL_SAT_NAME, COUNT(COL_CALL) AS qsocount FROM ".$this->config->item('table_name')." WHERE station_id IN (".$location_list.") AND COL_PROP_MODE = 'SAT' AND COL_SAT_NAME != '' GROUP BY COL_SAT_NAME ORDER BY COL_SAT_NAME ASC;";
+		foreach ($this->db->query($sql)->result() as $row) {
+			$sats[$row->COL_SAT_NAME] = $row->qsocount;
+		}
+		return $sats;
 	}
-	return $sats;
-
 }
 
 function validateADIFDate($date, $format = 'Ymd') {
 	$d = DateTime::createFromFormat($format, $date);
 	return $d && $d->format($format) == $date;
 }
-}
-
