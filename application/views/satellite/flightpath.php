@@ -5,11 +5,13 @@
 <script>
 	const homelat = "<?php echo $latlng[0]; ?>";
 	const homelon = "<?php echo $latlng[1]; ?>";
+	const homegrid = "<?php echo $homegrid; ?>";
 	var icon_home_url = "<?php echo base_url();?>assets/images/dot.png";
-	var tileUrl = "<?php echo $this->optionslib->get_option('option_map_tile_server'); ?>"
+	var tileUrl = "<?php echo $this->optionslib->get_option('option_map_tile_server'); ?>";
 </script>
 <script type="text/javascript">
     var lang_gen_hamradio_gridsquares = '<?= _pgettext("Map Options", "Gridsquares"); ?>';
+	let lang_gen_hamradio_upcoming_passes = '<?= "Upcoming satellite passes for"; ?>';
 </script>
 
 <style>
@@ -40,13 +42,12 @@
 			<select class="form-select my-1 me-sm-2 w-auto"  id="sats" onchange="plot_sat()">
 				<?php foreach($satellites as $sat) {
 					echo '<option value="' . $sat->satname . '"';
-					if ($sat->satname == ($selsat ?? '')) { echo ' selected'; }
+					if ($sat->satname == $selsat) { echo ' selected'; }
 					echo '>' . $sat->satname . '</option>'."\n";
 				} ?>
 			</select>
 
 
-		<input type="hidden" id="selsat" value="<?php echo ($selsat ?? ''); ?>">
 	</form>
 
 </div>
