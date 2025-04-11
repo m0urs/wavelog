@@ -5,18 +5,19 @@
 # Karuru <karuru@aerodefense.co.uk>, 2024, 2025.
 # BG6HJE <1753409828@qq.com>, 2024, 2025.
 # imlonghao <wavelog@esd.cc>, 2024, 2025.
-# Jian ke <bg8ixz@hotmail.com>, 2024.
+# Jian ke <bg8ixz@hotmail.com>, 2024, 2025.
 # Qing He <HE@BD8DHF.COM>, 2024.
 # hellofinch <543933756@qq.com>, 2024, 2025.
 # wxy <xy.8789aime@foxmail.com>, 2024.
 # YuanRetro <lijiaxuan1811@163.com>, 2025.
 # 李宇翔 <lyx8851@qq.com>, 2025.
+# Tao Xu <angelxutao@gmail.com>, 2025.
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2025-04-04 05:15+0000\n"
-"PO-Revision-Date: 2025-04-01 09:52+0000\n"
-"Last-Translator: hellofinch <543933756@qq.com>\n"
+"POT-Creation-Date: 2025-04-11 06:56+0000\n"
+"PO-Revision-Date: 2025-04-10 10:16+0000\n"
+"Last-Translator: Jian ke <bg8ixz@hotmail.com>\n"
 "Language-Team: Chinese (Simplified Han script) <https://translate.wavelog."
 "org/projects/wavelog/main-translation/zh_Hans/>\n"
 "Language: zh_CN\n"
@@ -482,8 +483,8 @@ msgid "POTA"
 msgstr "POTA"
 
 #: application/controllers/Awards.php:596
-msgid "CQ Magazine WAZ"
-msgstr "CQ 杂志 WAZ"
+msgid "CQ WAZ (Worked All Zones)"
+msgstr ""
 
 #: application/controllers/Awards.php:657
 #: application/views/accumulate/index.php:54
@@ -3676,7 +3677,7 @@ msgstr "显示"
 #: application/views/interface_assets/header.php:192
 #: application/views/logbookadvanced/edit.php:19
 #: application/views/logbookadvanced/index.php:255
-#: application/views/satellite/flightpath.php:41
+#: application/views/satellite/flightpath.php:40
 #: application/views/satellite/pass.php:47
 #: application/views/satellite/passtable.php:6
 #: application/views/satellite/skedtable.php:7
@@ -4654,12 +4655,14 @@ msgstr "US County 奖状"
 #: application/views/awards/counties/index.php:8
 #, php-format
 msgid ""
-"The United States of America Counties Award (USA-CA), sponsored by CQ "
-"magazine, is issued for confirmed two-way radio contacts with specified "
-"numbers of U.S. counties under rules and conditions you can find %s."
+"The United States of America Counties Award (USA-CA), sponsored by MARAC "
+"(Mobile Amateur Radio Awards Club), is issued for confirmed two-way radio "
+"contacts with specified numbers of U.S. counties under rules and conditions "
+"you can find %s."
 msgstr ""
-"美国县奖（USA-CA）由《CQ》杂志赞助，旨在颁发给与指定数量的美国县进行确认的通"
-"联，可在 %s 查看奖项的规则和条件。"
+"由移动业余无线电奖项俱乐部（MARAC）颁发的\"美国县级行政区通联成就奖（USA-"
+"CA）\"，旨在表彰业余无线电爱好者通过双向通信与指定数量的美国县级行政区建立有"
+"效通联的行为，具体规则与条件可通过 %s 查阅。"
 
 #: application/views/awards/counties/index.php:9
 msgid ""
@@ -4737,34 +4740,39 @@ msgid "Hover over a zone"
 msgstr "鼠标停留到一个分区"
 
 #: application/views/awards/cq/index.php:20
-msgid "CQ Magazine WAZ Award"
-msgstr "CQ 杂志 WAZ 奖状"
+msgid "CQ WAZ (Worked All Zones) Award"
+msgstr "CQ 全球全分区通联成就奖"
 
 #: application/views/awards/cq/index.php:21
 msgid ""
-"The CQ Magazine is located in the US and one of the most popular amateur "
-"radio magazines in the world. The magazine first appeared in January 1945 "
-"and focuses on awards and the practical aspects of amateur radio."
+"The CQ Magazine was located in the US and one of the most popular amateur "
+"radio magazines in the world. They stopped service by the end of 2023. The "
+"magazine first appeared in January 1945 and focuses on awards and the "
+"practical aspects of amateur radio."
 msgstr ""
-"CQ 杂志来自美国，是世界上最受欢迎的业余无线电杂志之一。该杂志于 1945 年 1 月"
-"首次出版，重点关注业余无线电的奖项和实用方面。"
+"《CQ》杂志（总部位于美国）曾是全球最具影响力的业余无线电期刊之一，已于 2023 "
+"年底结束运营。这份创刊于 1945 年 1 月的专业刊物，始终以推动业余无线电奖项体系"
+"发展和传播实用操作技术为核心内容。"
 
 #: application/views/awards/cq/index.php:22
 msgid ""
 "The WAZ Award stands for 'Worked All Zones' and requires radio contacts to "
-"all 40 CQ Zones along with the corresponding confirmation."
+"all 40 CQ Zones along with the corresponding confirmation. Since the CQ "
+"Magazine does no longer exists the CQ WAZ Awards is now managed directly by "
+"N4BAA."
 msgstr ""
-"WAZ 奖代表“Worked All Zones”，需要与所有40个CQ分区进行QSO并提供相应的确认。"
+"WAZ 奖项（全称\"Worked All Zones\"，即\"通联所有分区奖\"）要求申请者在全球 "
+"40 个 CQ 分区均完成有效通联并提交 QSL 卡片确认。自 CQ 杂志停运后，该奖项现由 "
+"N4BAA 管理。"
 
 #: application/views/awards/cq/index.php:23
 #, php-format
-msgctxt "uses 'CQ Magazine'"
-msgid "You can find all the information and rules on the Website of the %s."
-msgstr "您可在 %s 查看规则信息。"
+msgid "You can find all the information and rules on the Website of N4BAA: %s"
+msgstr "您可以在 N4BAA 官网上查阅所有信息及规则：%s"
 
 #: application/views/awards/cq/index.php:25
-msgid "Awards - CQ Magazine WAZ"
-msgstr "CQ 杂志 WAZ 奖状"
+msgid "Awards - CQ WAZ"
+msgstr ""
 
 #: application/views/awards/cq/index.php:34
 #: application/views/awards/itu/index.php:34
@@ -5304,7 +5312,6 @@ msgid "Canton"
 msgstr "Canton"
 
 #: application/views/awards/index.php:9 application/views/bands/index.php:46
-#: application/views/interface_assets/header.php:174
 #: application/views/qso/award_tabs.php:29
 msgid "CQ"
 msgstr "CQ"
@@ -8786,6 +8793,10 @@ msgstr "呼号统计"
 msgid "International"
 msgstr "国际"
 
+#: application/views/interface_assets/header.php:174
+msgid "CQ WAZ"
+msgstr "CQ WAZ"
+
 #: application/views/interface_assets/header.php:178
 msgid "ITU"
 msgstr "ITU"
@@ -9406,7 +9417,7 @@ msgstr "西西里岛"
 
 #: application/views/logbookadvanced/index.php:13
 #: application/views/logbookadvanced/useroptions.php:194
-#: application/views/satellite/flightpath.php:13
+#: application/views/satellite/flightpath.php:11
 msgctxt "Map Options"
 msgid "Gridsquares"
 msgstr "网格"
@@ -11387,7 +11398,7 @@ msgstr "卫星模式"
 
 #: application/views/qso/index.php:656
 msgid "QSL MSG"
-msgstr "QSL确认信息"
+msgstr "QSL 确认信息"
 
 #: application/views/qso/index.php:675
 msgid "Reset to Default"
@@ -11708,6 +11719,12 @@ msgstr "保存卫星"
 msgid "Add satellite mode"
 msgstr "添加卫星模式"
 
+#: application/views/satellite/flightpath.php:51
+msgid ""
+"No satellites with TLE found. Please update via CRON or satellite page. If "
+"you have no access to do this, ask your admin!"
+msgstr ""
+
 #: application/views/satellite/index.php:44
 msgid "Add a satellite"
 msgstr "添加卫星"
@@ -11835,11 +11852,11 @@ msgstr "未发现重叠传输。请检查输入参数。"
 
 #: application/views/satellite/tleinfo.php:8
 msgid "Delete TLE"
-msgstr ""
+msgstr "删除 TLE"
 
 #: application/views/satellite/tleinfo.php:11
 msgid "Add TLE"
-msgstr ""
+msgstr "添加 TLE"
 
 #: application/views/sattimers/index.php:15
 #, php-format
@@ -11991,13 +12008,13 @@ msgstr "未通联过"
 #: application/views/view_log/partial/log.php:142
 #: application/views/view_log/partial/log_ajax.php:422
 msgid "Mark QSL Sent (Bureau)"
-msgstr "标记 已收到卡片(卡片局)"
+msgstr "标记 已发送卡片(卡片局)"
 
 #: application/views/search/search_result_ajax.php:425
 #: application/views/view_log/partial/log.php:143
 #: application/views/view_log/partial/log_ajax.php:423
 msgid "Mark QSL Sent (Direct)"
-msgstr "标记 已收到卡片(直邮)"
+msgstr "标记 已发送卡片(直邮)"
 
 #: application/views/search/search_result_ajax.php:432
 #: application/views/view_log/partial/log.php:150
@@ -14331,6 +14348,44 @@ msgstr "提交请求"
 #: application/views/widgets/qsos.php:20
 msgid "Rcvd"
 msgstr "收"
+
+#~ msgid "CQ Magazine WAZ"
+#~ msgstr "CQ 杂志 WAZ"
+
+#, php-format
+#~ msgid ""
+#~ "The United States of America Counties Award (USA-CA), sponsored by CQ "
+#~ "magazine, is issued for confirmed two-way radio contacts with specified "
+#~ "numbers of U.S. counties under rules and conditions you can find %s."
+#~ msgstr ""
+#~ "美国县奖（USA-CA）由《CQ》杂志赞助，旨在颁发给与指定数量的美国县进行确认的"
+#~ "通联，可在 %s 查看奖项的规则和条件。"
+
+#~ msgid "CQ Magazine WAZ Award"
+#~ msgstr "CQ 杂志 WAZ 奖状"
+
+#~ msgid ""
+#~ "The CQ Magazine is located in the US and one of the most popular amateur "
+#~ "radio magazines in the world. The magazine first appeared in January 1945 "
+#~ "and focuses on awards and the practical aspects of amateur radio."
+#~ msgstr ""
+#~ "CQ 杂志来自美国，是世界上最受欢迎的业余无线电杂志之一。该杂志于 1945 年 1 "
+#~ "月首次出版，重点关注业余无线电的奖项和实用方面。"
+
+#~ msgid ""
+#~ "The WAZ Award stands for 'Worked All Zones' and requires radio contacts "
+#~ "to all 40 CQ Zones along with the corresponding confirmation."
+#~ msgstr ""
+#~ "WAZ 奖代表“Worked All Zones”，需要与所有40个CQ分区进行QSO并提供相应的确"
+#~ "认。"
+
+#, php-format
+#~ msgctxt "uses 'CQ Magazine'"
+#~ msgid "You can find all the information and rules on the Website of the %s."
+#~ msgstr "您可在 %s 查看规则信息。"
+
+#~ msgid "Awards - CQ Magazine WAZ"
+#~ msgstr "CQ 杂志 WAZ 奖状"
 
 #~ msgid "Hams-Of-Not URL changed to "
 #~ msgstr "Hams-Of-Note 地址更改为 "
