@@ -30,7 +30,6 @@
 
 	<?php if(validation_errors()) { ?>
     <div class="alert alert-danger">
-    	<a class="btn-close" data-bs-dismiss="alert">x</a>
  		<?php echo validation_errors(); ?>
     </div>
 	<?php } ?>
@@ -664,7 +663,7 @@
 											</div>
 											<div class="form-check form-switch">
 												<input name="user_sig_to_qso_tab" class="form-check-input" type="checkbox" role="switch" id="sigToQsoTab" <?php if ($user_sig_to_qso_tab ?? false) { echo 'checked'; } ?>>
-												<label class="form-check-label" for="sigToQsoTab" ><?= __("Sig"); ?> / <?= __("Sig Info"); ?></label>
+												<label class="form-check-label" for="sigToQsoTab" ><?= __("SIG"); ?> / <?= __("SIG Info"); ?></label>
 											</div>
 											<div class="form-check form-switch">
 												<input name="user_dok_to_qso_tab" class="form-check-input" type="checkbox" role="switch" id="dokToQsoTab" <?php if ($user_dok_to_qso_tab ?? false) { echo 'checked'; } ?>>
