@@ -261,6 +261,7 @@ function stopImpersonate_modal() {
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/chartjs-plugin-piechart-outlabels.js"></script>
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/sections/statistics.js"></script>
 <?php } ?>
+    <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/sections/antennaanalytics.js"></script>
 
 <?php if ($this->uri->segment(1) == "continents") { ?>
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/chart.js"></script>
@@ -2590,7 +2591,7 @@ function viewEqsl(picture, callsign) {
                     message: html,
                     onshown: function(dialog) {
                        $('[data-bs-toggle="tooltip"]').tooltip();
-                       $('.contacttable').DataTable({
+                       $('.displaycontactstable').DataTable({
                             "pageLength": 7,
                             responsive: false,
                             ordering: false,
@@ -2662,7 +2663,7 @@ function viewEqsl(picture, callsign) {
 			    message: html,
 			    onshown: function(dialog) {
 				    $('[data-bs-toggle="tooltip"]').tooltip();
-				    $('.contacttable').DataTable({
+				    $('.displaycontactstable').DataTable({
 				    "pageLength": 25,
 					    responsive: false,
 					    ordering: false,
