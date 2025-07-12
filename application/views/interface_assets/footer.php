@@ -261,7 +261,6 @@ function stopImpersonate_modal() {
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/chartjs-plugin-piechart-outlabels.js"></script>
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/sections/statistics.js"></script>
 <?php } ?>
-    <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/sections/antennaanalytics.js"></script>
 
 <?php if ($this->uri->segment(1) == "continents") { ?>
     <script type="text/javascript" src="<?php echo base_url(); ?>assets/js/chart.js"></script>
@@ -764,6 +763,7 @@ $('#dxcc_id').on('change', function() {
             return dxcc.adif == dxccadif;
         });
         $("#stationCQZoneInput").val(dxccinfo[0].cq);
+		$("#stationITUZoneInput").val(dxccinfo[0].itu);
         if (dxccadif == 0) {
             $("#stationITUZoneInput").val(dxccinfo[0].itu); // Only set ITU zone to none if DXCC none is selected. We don't have ITU data for other DXCCs.
         }
@@ -2374,7 +2374,7 @@ $('#sats').change(function(){
 	<script src="<?php echo base_url(); ?>assets/js/sections/timeplot.js"></script>
 <?php } ?>
 
-<?php if ($this->uri->segment(1) == "qsl" || $this->uri->segment(1) == "eqsl") {
+<?php if ($this->uri->segment(1) == "generic_qsl" || $this->uri->segment(1) == "qsl" || $this->uri->segment(1) == "eqsl") {
     	// Get Date format
 	if($this->session->userdata('user_date_format')) {
 		// If Logged in and session exists
@@ -2409,6 +2409,8 @@ $('#sats').change(function(){
         };
     </script>
     <?php if ($this->uri->segment(1) == "qsl") {
+        $qsl_eqsl_table = '.qsltable';
+    } else if ($this->uri->segment(1) == "generic_qsl") {
         $qsl_eqsl_table = '.qsltable';
     } else if ($this->uri->segment(1) == "eqsl") {
         $qsl_eqsl_table = '.eqsltable';
@@ -2840,17 +2842,6 @@ function viewEqsl(picture, callsign) {
 		});
 	}
 
-	function searchAdditionalQsos(filename) {
-		$.ajax({
-			url: base_url + 'index.php/qsl/searchQsos',
-			type: 'post',
-			data: {'callsign': $('#callsign').val(), 'filename': filename},
-			success: function(html) {
-				$('#searchresult').empty();
-				$('#searchresult').append(html);
-			}
-		});
-	}
 </script>
 <?php if ($this->uri->segment(1) == "contesting" && ($this->uri->segment(2) != "add" && $this->uri->segment(2) != "edit")) { ?>
     <script>
@@ -3097,6 +3088,51 @@ function viewEqsl(picture, callsign) {
                 }
             };
             $('#wwfftable').DataTable({
+                "pageLength": 25,
+                responsive: false,
+                ordering: true,
+                "scrollY":        "500px",
+                "scrollCollapse": true,
+                "paging":         false,
+                "scrollX": true,
+                "language": {
+                    url: getDataTablesLanguageUrl(),
+                },
+                "order": [ 0, 'asc' ],
+                dom: 'Bfrtip',
+                buttons: [
+					{
+						extend: 'csv',
+						className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+					},
+                   {
+                      extend: 'clear',
+					  className: 'mb-1 btn btn-primary', // Bootstrap classes
+							init: function(api, node, config) {
+								$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
+						},
+                      text: lang_admin_clear
+                   }
+                ]
+            });
+            // change color of csv-button if dark mode is chosen
+            if (isDarkModeTheme()) {
+               $('[class*="buttons"]').css("color", "white");
+            }
+        </script>
+    <?php } else if ($this->uri->segment(2) == 'sota') { ?>
+        <script>
+            $.fn.dataTable.moment('<?php echo $usethisformat ?>');
+            $.fn.dataTable.ext.buttons.clear = {
+                className: 'buttons-clear',
+                action: function ( e, dt, node, config ) {
+                   dt.search('').draw();
+                }
+            };
+            $('#sotatable').DataTable({
                 "pageLength": 25,
                 responsive: false,
                 ordering: true,
