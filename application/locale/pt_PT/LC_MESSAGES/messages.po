@@ -10,8 +10,8 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2025-07-16 04:48+0000\n"
-"PO-Revision-Date: 2025-07-13 18:53+0000\n"
+"POT-Creation-Date: 2025-07-17 15:22+0000\n"
+"PO-Revision-Date: 2025-07-17 13:35+0000\n"
 "Last-Translator: \"Francisco (F4VSE)\" <kikosgc@users.noreply.github.com>\n"
 "Language-Team: Portuguese (Portugal) <https://translate.wavelog.org/projects/"
 "wavelog/main-translation/pt_PT/>\n"
@@ -374,7 +374,7 @@ msgstr "Visualização do log - VUCC"
 #: application/controllers/Awards.php:458
 #: application/controllers/Callstats.php:100
 #: application/controllers/Distancerecords.php:86
-#: application/controllers/Statistics.php:306
+#: application/controllers/Statistics.php:321
 #: application/controllers/Timeline.php:126
 #: application/controllers/Timeline.php:129
 #: application/controllers/Timeline.php:132
@@ -2244,7 +2244,7 @@ msgstr "Trajectória de Satélite"
 
 #: application/controllers/Satellite.php:256
 msgid "Satellite pass"
-msgstr ""
+msgstr "Passagem Satélite"
 
 #: application/controllers/Satellite.php:313
 msgid "Failed to save pass settings!"
@@ -2565,23 +2565,23 @@ msgstr "Editar opções do mapa de exportação"
 msgid "Statistics"
 msgstr "Estatísticas"
 
-#: application/controllers/Statistics.php:238
+#: application/controllers/Statistics.php:253
 #: application/views/interface_assets/header.php:146
 #: application/views/statistics/qsltable.php:5
 msgid "QSL Statistics"
 msgstr "Estatísticas de QSL"
 
-#: application/controllers/Statistics.php:253
+#: application/controllers/Statistics.php:268
 #: application/views/interface_assets/header.php:144
 #: application/views/statistics/antennaanalytics.php:3
 msgid "Antenna Analytics"
 msgstr "Análise da Antena"
 
-#: application/controllers/Statistics.php:306
+#: application/controllers/Statistics.php:321
 msgid "Satellite QSOs"
 msgstr "Contactos via satélite"
 
-#: application/controllers/Statistics.php:322
+#: application/controllers/Statistics.php:337
 #: application/views/interface_assets/header.php:170
 msgid "EME Initials"
 msgstr "Iniciais EME"
@@ -8535,18 +8535,22 @@ msgid "Serbian"
 msgstr "Sérvio"
 
 #: application/views/debug/index.php:691
+msgid "Slovak"
+msgstr "Eslovaco"
+
+#: application/views/debug/index.php:692
 msgid "Slovenian"
 msgstr "Esloveno"
 
-#: application/views/debug/index.php:692
+#: application/views/debug/index.php:693
 msgid "Spanish"
 msgstr "Espanhol"
 
-#: application/views/debug/index.php:693
+#: application/views/debug/index.php:694
 msgid "Swedish"
 msgstr "Sueco"
 
-#: application/views/debug/index.php:694
+#: application/views/debug/index.php:695
 msgid "Turkish"
 msgstr "Turco"
 
@@ -12861,6 +12865,8 @@ msgid ""
 "The following QSOs were found to have an incorrect CQ zone that this DXCC "
 "normally has (a maximum of 5000 QSOs are shown):"
 msgstr ""
+"Os seguintes contactos foram encontrados com uma zona CQ incorreta que este "
+"DXCC normalmente possui (um máximo de 5000 contactos são mostrados):"
 
 #: application/views/search/cqzones_result.php:14
 msgid "DXCC CQ Zone"
