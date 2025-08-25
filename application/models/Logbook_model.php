@@ -5,6 +5,7 @@ class Logbook_model extends CI_Model {
 	private $station_result = [];
 	public function __construct() {
 		$this->oop_populate_modes();
+		$this->load->Model('Modes');
 	}
 
 	private $oop_modes = [];
@@ -1253,6 +1254,8 @@ class Logbook_model extends CI_Model {
 			}
 		} else if ($data['COL_SAT_NAME'] == 'CAS-3H') {
 			$sat_name = 'LilacSat-2';
+		} else if (preg_match('/TEV2-[1-9]/', $data['COL_SAT_NAME'])) {
+			$sat_name = str_replace('TEV2-', 'TEVEL2-', $data['COL_SAT_NAME']);
 		} else {
 			$sat_name = $data['COL_SAT_NAME'];
 		}
@@ -2373,7 +2376,7 @@ class Logbook_model extends CI_Model {
 		}
 	}
 
-	function check_if_callsign_cnfmd_in_logbook($callsign, $StationLocationsArray = null, $band = null) {
+	function check_if_callsign_cnfmd_in_logbook($callsign, $StationLocationsArray = null, $band = null, $mode = null) {
 
 		if ($StationLocationsArray == null) {
 			$this->load->model('logbooks_model');
@@ -2411,6 +2414,10 @@ class Logbook_model extends CI_Model {
 		$this->db->select('COL_CALL');
 		$this->db->where_in('station_id', $logbooks_locations_array);
 		$this->db->where('COL_CALL', $callsign);
+
+		if (isset($mode)) {
+			$this->db->where(" COL_MODE in ".$this->Modes->get_modes_from_qrgmode($mode,true));
+		}
 
 		$band = ($band == 'All') ? null : $band;
 		if ($band != null && $band != 'SAT') {
@@ -2457,7 +2464,7 @@ class Logbook_model extends CI_Model {
 		return $query->result();
 	}
 
-	function check_if_callsign_worked_in_logbook($callsign, $StationLocationsArray = null, $band = null) {
+	function check_if_callsign_worked_in_logbook($callsign, $StationLocationsArray = null, $band = null, $mode = null) {
 
 		if ($StationLocationsArray == null) {
 			$this->load->model('logbooks_model');
@@ -2469,6 +2476,10 @@ class Logbook_model extends CI_Model {
 		$this->db->select('COL_CALL');
 		$this->db->where_in('station_id', $logbooks_locations_array);
 		$this->db->where('COL_CALL', $callsign);
+
+		if (isset($mode)) {
+			$this->db->where(" COL_MODE in ".$this->Modes->get_modes_from_qrgmode($mode,true));
+		}
 
 		$band = ($band == 'All') ? null : $band;
 		if ($band != null && $band != 'SAT') {
@@ -2483,7 +2494,7 @@ class Logbook_model extends CI_Model {
 		return $query->num_rows();
 	}
 
-	function check_if_dxcc_worked_in_logbook($dxcc, $StationLocationsArray = null, $band = null) {
+	function check_if_dxcc_worked_in_logbook($dxcc, $StationLocationsArray = null, $band = null, $mode = null) {
 
 		if ($StationLocationsArray == null) {
 			$this->load->model('logbooks_model');
@@ -2495,6 +2506,10 @@ class Logbook_model extends CI_Model {
 		$this->db->select('COL_DXCC');
 		$this->db->where_in('station_id', $logbooks_locations_array);
 		$this->db->where('COL_DXCC', $dxcc);
+
+		if (isset($mode)) {
+			$this->db->where(" COL_MODE in ".$this->Modes->get_modes_from_qrgmode($mode,true));
+		}
 
 		$band = ($band == 'All') ? null : $band;
 		if ($band != null && $band != 'SAT') {
@@ -2574,7 +2589,7 @@ class Logbook_model extends CI_Model {
 	}
 
 
-	function check_if_dxcc_cnfmd_in_logbook($dxcc, $StationLocationsArray = null, $band = null) {
+	function check_if_dxcc_cnfmd_in_logbook($dxcc, $StationLocationsArray = null, $band = null, $mode = null) {
 
 		if ($StationLocationsArray == null) {
 			$this->load->model('logbooks_model');
@@ -2612,6 +2627,10 @@ class Logbook_model extends CI_Model {
 		$this->db->select('COL_DXCC');
 		$this->db->where_in('station_id', $logbooks_locations_array);
 		$this->db->where('COL_DXCC', $dxcc);
+
+		if (isset($mode)) {
+			$this->db->where(" COL_MODE in ".$this->Modes->get_modes_from_qrgmode($mode,true));
+		}
 
 		$band = ($band == 'All') ? null : $band;
 		if ($band != null && $band != 'SAT') {
@@ -3899,7 +3918,7 @@ class Logbook_model extends CI_Model {
 
 	function import_bulk($records, $station_id = "0", $skipDuplicate = false, $markClublog = false, $markLotw = false, $dxccAdif = false, $markQrz = false, $markEqsl = false, $markHrd = false, $markDcl = false, $skipexport = false, $operatorName = false, $apicall = false, $skipStationCheck = false) {
 		$this->load->model('user_model');
-		$custom_errors = '';
+		$custom_errors['errormessage'] = '';
 		$a_qsos = [];
 		$amsat_qsos = [];
 		$today = time();
@@ -3916,7 +3935,7 @@ class Logbook_model extends CI_Model {
 		foreach ($records as $record) {
 			$one_error = $this->import($record, $station_id, $skipDuplicate, $markClublog, $markLotw, $dxccAdif, $markQrz, $markEqsl, $markHrd, $markDcl, $skipexport, trim($operatorName), $apicall, $skipStationCheck, true, $station_id_ok, $station_profile, $station_qslmsg);
 			if ($one_error['error'] ?? '' != '') {
-				$custom_errors .= $one_error['error'] . "<br/>";
+				$custom_errors['errormessage'] .= $one_error['error'];
 			} else {	// No Errors / QSO doesn't exist so far
 				array_push($a_qsos, $one_error['raw_qso'] ?? '');
 				if (isset($record['prop_mode']) && $record['prop_mode'] == 'SAT' && $amsat_status_upload) {
@@ -3946,7 +3965,8 @@ class Logbook_model extends CI_Model {
 
 		$records = '';
 		gc_collect_cycles();
-		if (count($a_qsos) > 0) {
+		$custom_errors['qsocount'] = count($a_qsos);
+		if ($custom_errors['qsocount'] > 0) {
 			$this->db->insert_batch($this->config->item('table_name'), $a_qsos);
 		}
 		foreach ($amsat_qsos as $amsat_qso) {
@@ -3982,9 +4002,9 @@ class Logbook_model extends CI_Model {
 			$record['station_callsign'] = $station_profile_call;
 		}
 		if ((!$skipStationCheck) && ($station_id != 0) && (trim(strtoupper($record['station_callsign'])) != trim(strtoupper($station_profile_call)))) {     // Check if station_call from import matches profile ONLY when submitting via GUI.
-			$returner['error'] =sprintf(__("Wrong station callsign %s while importing QSO with %s for %s: SKIPPED") .
-				"<br>".__("Check %s for hints about errors in ADIF files."),
-				'<b>'.htmlentities($record['station_callsign'] ?? '').'</b>',($record['call'] ?? ''),'<b>'.($station_profile_call ?? '').'</b>',"<a target=\"_blank\" href=\"https://github.com/wavelog/Wavelog/wiki/ADIF-file-can't-be-imported\">Wavelog Wiki</a>");
+			$returner['error'] = sprintf(__("Wrong station callsign %s while importing QSO with %s for %s: SKIPPED") .
+				"<br>",
+				'<b>'.htmlentities($record['station_callsign'] ?? '').'</b>',($record['call'] ?? ''),'<b>'.($station_profile_call ?? '').'</b>');
 			return ($returner);
 		}
 
