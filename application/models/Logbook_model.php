@@ -938,8 +938,10 @@ class Logbook_model extends CI_Model {
    * Function checks if a HRDLog Code and Username exists in the table with the given station id
    */
 	function exists_hrdlog_credentials($station_id) {
+		
+		//checks only disabled state
 		$sql = 'select hrdlog_username, hrdlog_code, hrdlogrealtime from station_profile
-		  where station_id = ? and hrdlogrealtime>=0';
+		  where station_id = ? and hrdlogrealtime >= 0;';
 
 		$query = $this->db->query($sql, $station_id);
 
@@ -4809,13 +4811,17 @@ class Logbook_model extends CI_Model {
 		}
 
 		if ($darc_dok != '') {
-			$this->db->select('COL_PRIMARY_KEY, COL_DARC_DOK');
-			$this->db->where('COL_CALL', $call);
-			$this->db->like('COL_TIME_ON', $time_on, 'after');
-			$this->db->where('COL_BAND', $band);
-			$this->db->where('COL_MODE', $mode);
-			$this->db->where_in('station_id', $logbooks_locations_array);
-			$check = $this->db->get($this->config->item('table_name'));
+		$bindings=[];
+			$sql="select COL_PRIMARY_KEY, COL_DARC_DOK from ".$this->config->item('table_name')." 
+			where col_call=? and col_band=? and col_mode=? and station_id in ? 
+			AND COL_TIME_ON >= DATE_ADD(DATE_FORMAT(?, '%Y-%m-%d %H:%i' ), INTERVAL -15 MINUTE) AND COL_TIME_ON <= DATE_ADD(DATE_FORMAT(?, '%Y-%m-%d %H:%i' ), INTERVAL +15 MINUTE)";
+			$bindings[]=$call;	
+			$bindings[]=$band;	
+			$bindings[]=$mode;	
+			$bindings[]=$logbooks_locations_array;	
+			$bindings[]=$time_on;
+			$bindings[]=$time_on;
+			$check = $this->db->query($sql,$bindings);
 			if ($check->num_rows() != 1) {
 				if ($ignoreAmbiguous == '1') {
 					return array();
@@ -4924,6 +4930,7 @@ class Logbook_model extends CI_Model {
 	function set_dok($key, $dok) {
 		$data = array(
 			'COL_DARC_DOK' => $dok,
+			'COL_DCL_QSL_RCVD ' => 'Y',
 		);
 
 		$this->db->where(array('COL_PRIMARY_KEY' => $key));
