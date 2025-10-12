@@ -106,9 +106,9 @@ function getDistance($distance) {
 <div class="container dashboard">
 <?php if(($this->config->item('use_auth') && ($this->session->userdata('user_type') >= 2)) || $this->config->item('use_auth') === FALSE) { ?>
 
-	<?php if (version_compare(PHP_VERSION, '7.4.0') <= 0) { ?>
+	<?php if (version_compare(PHP_VERSION, '8.0.0') <= 0) { ?>
 		<div class="alert alert-danger alert-dismissible fade show" role="alert">
-			<?= __("You need to upgrade your PHP version. Minimum version is 7.4. Your version is") . ' ' . PHP_VERSION . '.';?>
+			<?= sprintf(__("You need to upgrade your PHP version. Minimum version is %s. Your version is: %s."), "8.0", PHP_VERSION); ?>
 			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 		</div>
 	<?php } ?>
@@ -177,7 +177,12 @@ function getDistance($distance) {
 		</div>
 	<?php } else { ?>
 		<div class="alert alert-warning alert-dismissible fade show" role="alert" style="margin-top: 1rem;">
-			<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-broadcast-tower"></i> <?= __("You have made no QSOs today; time to turn on the radio!"); ?>
+			<span class="badge text-bg-info"><?= __("Important"); ?></span> <i class="fas fa-broadcast-tower"></i> 
+			<?php if (($current_streak ?? 0)>0) { 
+				echo sprintf(__("Don't loose your streak - You have already had at least one QSO for the last %s consecutive days."),$current_streak); 
+			} else {
+				echo __("You have made no QSOs today; time to turn on the radio!"); 
+			} ?>
 			<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 		</div>
 	<?php } ?>
