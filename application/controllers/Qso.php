@@ -88,6 +88,20 @@ class QSO extends CI_Controller {
 			$data['user_dok_to_qso_tab'] = 0;
 		}
 
+		// Get status of DX Waterfall enable option
+		$qkey_opt=$this->user_options_model->get_options('dxwaterfall',array('option_name'=>'enable','option_key'=>'boolean'))->result();
+		if (count($qkey_opt)>0) {
+			$data['user_dxwaterfall_enable'] = $qkey_opt[0]->option_value;
+			$data['dxcluster_default_decont'] = $this->optionslib->get_option('dxcluster_decont') ?? 'EU';
+			$data['dxcluster_default_maxage'] = $this->optionslib->get_option('dxcluster_maxage') ?? 60;
+		} else {
+			$data['user_dxwaterfall_enable'] = 0;
+
+			// default but not used, prevent unset variable, without the need of a db call
+			$data['dxcluster_default_decont'] = 'EU';
+			$data['dxcluster_default_maxage'] = 60;
+		}
+
 		$data['qso_count'] = $this->session->userdata('qso_page_last_qso_count');
 
 		$this->load->library('form_validation');
@@ -220,10 +234,8 @@ class QSO extends CI_Controller {
 				->get_options('cwmacros', ['option_name' => "macro{$i}"])
 				->row();
 
-			// Decode JSON stored in option_value
 			$decoded = json_decode($row->option_value ?? '');
 
-			// Make sure it's an object (in case it's null)
 			$name  = isset($decoded->name) ? $decoded->name : '';
 			$macro = isset($decoded->macro) ? $decoded->macro : '';
 
@@ -233,8 +245,27 @@ class QSO extends CI_Controller {
 			];
 		}
 
+		// Check if all are empty
+		$allEmpty = true;
+		foreach ($cwmacros as $macro) {
+			if (!empty($macro['name']) || !empty($macro['macro'])) {
+				$allEmpty = false;
+				break;
+			}
+		}
+
+		// Apply defaults to first 5 if all are empty
+		if ($allEmpty) {
+			$cwmacros['macro1'] = ['name' => 'CQ',   'macro' => 'CQ CQ CQ DE [MYCALL] [MYCALL] K'];
+			$cwmacros['macro2'] = ['name' => 'REPT', 'macro' => '[CALL] DE [MYCALL] [RSTS] [RSTS] K'];
+			$cwmacros['macro3'] = ['name' => 'TU',   'macro' => '[CALL] TU 73 DE [MYCALL] K'];
+			$cwmacros['macro4'] = ['name' => 'QRZ',  'macro' => 'QRZ DE [MYCALL] K'];
+			$cwmacros['macro5'] = ['name' => 'TEST', 'macro' => 'TEST DE [MYCALL] K'];
+		}
+
 		$this->load->view('qso/components/winkeysettings', $cwmacros);
 	}
+
 
 	function cwmacrosave(){
 		$this->load->model('user_options_model');
@@ -260,7 +291,7 @@ class QSO extends CI_Controller {
 				->row();
 
 			// Decode JSON stored in option_value
-			$decoded = json_decode($row->option_value);
+			$decoded = json_decode($row->option_value ?? '');
 
 			// Make sure it's an object (in case it's null)
 			$name  = isset($decoded->name) ? $decoded->name : '';
@@ -630,7 +661,9 @@ class QSO extends CI_Controller {
 		$this->load->model('stations');
 		$this->load->library('qra');
 		$stationProfile = $this->input->post('stationProfile', TRUE);
-		$data = array('station_power' => $this->stations->get_station_power($stationProfile));
+		$result = $this->stations->get_station_power($stationProfile);
+		$data['station_power'] = $result['station_power'];
+		$data['station_callsign'] = $result['station_callsign'];
 		[$data['lat'], $data['lng']] = $this->qra->qra2latlong($this->stations->gridsquare_from_station($stationProfile));
 
 		header('Content-Type: application/json');
