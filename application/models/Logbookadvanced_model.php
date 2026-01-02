@@ -1,32 +1,123 @@
 <?php
 use Wavelog\QSLManager\QSO;
+use Wavelog\Dxcc\Dxcc;
 
 class Logbookadvanced_model extends CI_Model {
+
+	public function dupeSearchQuery($searchCriteria, $binding) {
+		$conditions = [];
+		$group_by_append = '';
+		$order_by = '';
+
+		$order_by .= ' order by col_call';
+		$id_sql = "select GROUP_CONCAT(col_primary_key separator ',') as qsoids, COL_CALL, station_callsign, min(col_time_on) Mintime, max(col_time_on) Maxtime";
+
+		if (isset($searchCriteria['dupemode']) && $searchCriteria['dupemode'] === 'Y') {
+			$id_sql .= ", COL_MODE, COL_SUBMODE";
+			$group_by_append .= ", COL_MODE, COL_SUBMODE";
+		}
+		if (isset($searchCriteria['dupeband']) && $searchCriteria['dupeband'] === 'Y') {
+			$id_sql .= ", COL_BAND";
+			$group_by_append .= ", COL_BAND";
+		}
+		if (isset($searchCriteria['dupesat']) && $searchCriteria['dupesat'] === 'Y') {
+			$id_sql .= ", COL_SAT_NAME";
+			$group_by_append .= ", COL_SAT_NAME";
+			$conditions[] = "COL_PROP_MODE = 'SAT' and COL_SAT_NAME <> '' and COL_SAT_NAME is not null";
+		}
+
+		$id_sql .= " from " . $this->config->item('table_name') . "
+			join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id where station_profile.user_id = ?";
+
+		$id_sql .= "group by COL_CALL, station_callsign";
+		$id_sql .= $group_by_append;
+		$id_sql .= " having count(*) > 1";
+		if (isset($searchCriteria['dupedate']) && $searchCriteria['dupedate'] === 'Y') {
+			$id_sql .= " AND TIMESTAMPDIFF(SECOND, Mintime, Maxtime) < 1800";
+			$order_by .= ' , col_time_on desc';
+		}
+
+		$id_query = $this->db->query($id_sql, array($this->session->userdata('user_id')));
+		$ids2fetch = '';
+		foreach ($id_query->result() as $id) {
+			$ids2fetch .= ','.$id->qsoids;
+		}
+		$ids2fetch = ltrim($ids2fetch, ',');
+		if ($ids2fetch ?? '' !== '') {
+			$conditions[] = "qsos.COL_PRIMARY_KEY in (".$ids2fetch.")";
+		} else {
+			$conditions[] = "1=0";
+		}
+
+		if (($searchCriteria['ids'] ?? '') !== '') {
+			// Sanitize IDs to prevent SQL injection
+			if (is_array($searchCriteria['ids'])) {
+				$sanitized_ids = array_map('intval', $searchCriteria['ids']);
+				$sanitized_ids = array_filter($sanitized_ids, function($id) {
+					return $id > 0;
+				});
+				if (!empty($sanitized_ids)) {
+					$conditions[] = "qsos.COL_PRIMARY_KEY in (".implode(",",$sanitized_ids).")";
+				}
+			}
+		}
+
+		$where = trim(implode(" AND ", $conditions));
+		if ($where != "") {
+			$where = "AND $where";
+		}
+
+		$limit = '';
+
+		if ($searchCriteria['qsoresults'] != 'All') {
+			// Sanitize and enforce max limit to prevent DoS
+			$max_results = 10000;
+			$limit_value = max(1, min($max_results, intval($searchCriteria['qsoresults'])));
+			$limit = ' limit ' . $limit_value;
+		}
+
+		$sql = "
+		SELECT qsos.*, dxcc_entities.*, lotw_users.*, station_profile.*, satellite.*, dxcc_entities.name as dxccname, mydxcc.name AS station_country, exists(select 1 from qsl_images where qsoid = qsos.COL_PRIMARY_KEY) as qslcount, coalesce(contest.name, qsos.col_contest_id) as contestname
+		FROM " . $this->config->item('table_name') . " qsos
+		INNER JOIN station_profile ON qsos.station_id=station_profile.station_id
+		LEFT OUTER JOIN satellite ON qsos.col_prop_mode='SAT' and qsos.COL_SAT_NAME = COALESCE(NULLIF(satellite.name, ''), NULLIF(satellite.displayname, ''))
+		LEFT OUTER JOIN dxcc_entities ON qsos.col_dxcc = dxcc_entities.adif
+		left outer join dxcc_entities mydxcc on qsos.col_my_dxcc = mydxcc.adif
+		LEFT OUTER JOIN lotw_users ON qsos.col_call = lotw_users.callsign
+		LEFT OUTER JOIN contest ON qsos.col_contest_id = contest.adifname
+		WHERE station_profile.user_id =  ?
+		$where
+		$order_by
+		$limit
+		";
+		return $this->db->query($sql, $binding);
+	}
 
 	public function searchDb($searchCriteria) {
 		$conditions = [];
 		$binding = [$searchCriteria['user_id']];
 
 		if (isset($searchCriteria['qsoids']) && ($searchCriteria['qsoids'] !== '')) {
-			$ids2fetch = $searchCriteria['qsoids'];
-			$conditions[] = "qsos.COL_PRIMARY_KEY in (".$ids2fetch.")";
+			// Sanitize qsoids to prevent SQL injection
+			$qsoids = $searchCriteria['qsoids'];
+			if (is_array($qsoids)) {
+				$sanitized_ids = array_map('intval', $qsoids);
+			} else {
+				// Handle comma-separated string
+				$ids_array = explode(',', $qsoids);
+				$sanitized_ids = array_map('intval', $ids_array);
+			}
+			$sanitized_ids = array_filter($sanitized_ids, function($id) {
+				return $id > 0;
+			});
+			if (!empty($sanitized_ids)) {
+				$ids2fetch = implode(',', $sanitized_ids);
+				$conditions[] = "qsos.COL_PRIMARY_KEY in (".$ids2fetch.")";
+			}
 		}
 
 		if ((isset($searchCriteria['dupes'])) && ($searchCriteria['dupes'] !== '')) {
-			$id_sql="select GROUP_CONCAT(col_primary_key separator ',') as qsoids, COL_CALL, COL_MODE, COL_SUBMODE, station_callsign, COL_SAT_NAME, COL_BAND,  min(col_time_on) Mintime, max(col_time_on) Maxtime from " . $this->config->item('table_name') . "
-				join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id where station_profile.user_id = ?
-				group by col_call, col_mode, COL_SUBMODE, STATION_CALLSIGN, col_band, COL_SAT_NAME having count(*) > 1 AND TIMESTAMPDIFF(SECOND, Mintime, Maxtime) < 1500";
-			$id_query = $this->db->query($id_sql, $searchCriteria['user_id']);
-			$ids2fetch = '';
-			foreach ($id_query->result() as $id) {
-				$ids2fetch .= ','.$id->qsoids;
-			}
-			$ids2fetch = ltrim($ids2fetch, ',');
-			if ($ids2fetch ?? '' !== '') {
-				$conditions[] = "qsos.COL_PRIMARY_KEY in (".$ids2fetch.")";
-			} else {
-				$conditions[] = "1=0";
-			}
+			return $this->dupeSearchQuery($searchCriteria, $binding);
 		}
 
 		if ((isset($searchCriteria['invalid'])) && ($searchCriteria['invalid'] !== '')) {
@@ -96,7 +187,17 @@ class Logbookadvanced_model extends CI_Model {
 			if ($searchCriteria['de'] == '') {
 				$stationids = 'null';
 			} else {
-				$stationids = implode(',', $searchCriteria['de']);
+				// Sanitize station IDs to prevent SQL injection
+				$de_array = is_array($searchCriteria['de']) ? $searchCriteria['de'] : [$searchCriteria['de']];
+				$sanitized_ids = array_map('intval', $de_array);
+				$sanitized_ids = array_filter($sanitized_ids, function($id) {
+					return $id > 0;
+				});
+				if (!empty($sanitized_ids)) {
+					$stationids = implode(',', $sanitized_ids);
+				} else {
+					$stationids = 'null';
+				}
 			}
 			$conditions[] = "qsos.station_id in (".$stationids.")";
 		}
@@ -464,12 +565,16 @@ class Logbookadvanced_model extends CI_Model {
 		}
 
 		if (($searchCriteria['ids'] ?? '') !== '') {
-			$conditions[] = "qsos.COL_PRIMARY_KEY in (".implode(",",$searchCriteria['ids']).")";
-		}
-
-		$where = trim(implode(" AND ", $conditions));
-		if ($where != "") {
-			$where = "AND $where";
+			// Sanitize IDs to prevent SQL injection
+			if (is_array($searchCriteria['ids'])) {
+				$sanitized_ids = array_map('intval', $searchCriteria['ids']);
+				$sanitized_ids = array_filter($sanitized_ids, function($id) {
+					return $id > 0;
+				});
+				if (!empty($sanitized_ids)) {
+					$conditions[] = "qsos.COL_PRIMARY_KEY in (".implode(",",$sanitized_ids).")";
+				}
+			}
 		}
 
 		$where = trim(implode(" AND ", $conditions));
@@ -480,7 +585,10 @@ class Logbookadvanced_model extends CI_Model {
 		$limit = '';
 
 		if ($searchCriteria['qsoresults'] != 'All') {
-			$limit = 'limit ' . $searchCriteria['qsoresults'];
+			// Sanitize and enforce max limit to prevent DoS
+			$max_results = 10000;
+			$limit_value = max(1, min($max_results, intval($searchCriteria['qsoresults'])));
+			$limit = ' limit ' . $limit_value;
 		}
 
 		$where2 = '';
@@ -495,7 +603,7 @@ class Logbookadvanced_model extends CI_Model {
 		}
 
 		$sql = "
-			SELECT qsos.*, dxcc_entities.*, lotw_users.*, station_profile.*, satellite.*, dxcc_entities.name as dxccname, mydxcc.name AS station_country, exists(select 1 from qsl_images where qsoid = qsos.COL_PRIMARY_KEY) as qslcount, coalesce(contest.name, qsos.col_contest_id) as contestname
+			SELECT qsos.*, qsos.last_modified AS qso_last_modified, dxcc_entities.*, lotw_users.*, station_profile.*, satellite.*, dxcc_entities.name as dxccname, mydxcc.name AS station_country, exists(select 1 from qsl_images where qsoid = qsos.COL_PRIMARY_KEY) as qslcount, coalesce(contest.name, qsos.col_contest_id) as contestname
 			FROM " . $this->config->item('table_name') . " qsos
 			INNER JOIN station_profile ON qsos.station_id=station_profile.station_id
 			LEFT OUTER JOIN satellite ON qsos.col_prop_mode='SAT' and qsos.COL_SAT_NAME = COALESCE(NULLIF(satellite.name, ''), NULLIF(satellite.displayname, ''))
@@ -547,7 +655,7 @@ class Logbookadvanced_model extends CI_Model {
 			$where = "AND $where";
 		}
 
-		$order = $this->getSortorder($sortorder);
+		$order = $this->getSortOrder($sortorder);
 
         $sql = "
             SELECT qsos.*, lotw_users.*, station_profile.*, dxcc_entities.name AS station_country, d2.adif as adif, d2.name as dxccname, exists(select 1 from qsl_images where qsoid = qsos.COL_PRIMARY_KEY) as qslcount, coalesce(contest.name, qsos.col_contest_id) as contestname
@@ -629,6 +737,21 @@ class Logbookadvanced_model extends CI_Model {
 		if(!$this->user_model->authorize(2)) {
 			return array('message' => 'Error');
 		} else {
+			// Sanitize IDs to prevent SQL injection
+			$ids_array = json_decode($ids, true);
+			if (is_array($ids_array)) {
+				$sanitized_ids = array_map('intval', $ids_array);
+				$sanitized_ids = array_filter($sanitized_ids, function($id) {
+					return $id > 0;
+				});
+			} else {
+				$sanitized_ids = [];
+			}
+
+			if (empty($sanitized_ids)) {
+				return array('message' => 'Error');
+			}
+
 			$sql = "UPDATE " . $this->config->item('table_name') ."
 				SET
 				COL_QSLSDATE = CURRENT_TIMESTAMP,
@@ -638,7 +761,7 @@ class Logbookadvanced_model extends CI_Model {
 				WHEN COL_QRZCOM_QSO_UPLOAD_STATUS IN ('Y', 'I') THEN 'M'
 				ELSE COL_QRZCOM_QSO_UPLOAD_STATUS
 				END
-				WHERE COL_PRIMARY_KEY IN (".implode(',',json_decode($ids, true)).")";
+				WHERE COL_PRIMARY_KEY IN (".implode(',', $sanitized_ids).")";
 			$binding[] = $sent;
 			$binding[] = $method;
 			$this->db->query($sql, $binding);
@@ -653,6 +776,21 @@ class Logbookadvanced_model extends CI_Model {
 		if(!$this->user_model->authorize(2)) {
 			return array('message' => 'Error');
 		} else {
+			// Sanitize IDs to prevent SQL injection
+			$ids_array = json_decode($ids, true);
+			if (is_array($ids_array)) {
+				$sanitized_ids = array_map('intval', $ids_array);
+				$sanitized_ids = array_filter($sanitized_ids, function($id) {
+					return $id > 0;
+				});
+			} else {
+				$sanitized_ids = [];
+			}
+
+			if (empty($sanitized_ids)) {
+				return array('message' => 'Error');
+			}
+
 			$sql = "UPDATE " . $this->config->item('table_name') ."
 				SET
 				COL_QSLRDATE = CURRENT_TIMESTAMP,
@@ -662,7 +800,7 @@ class Logbookadvanced_model extends CI_Model {
 				WHEN COL_QRZCOM_QSO_UPLOAD_STATUS IN ('Y', 'I') THEN 'M'
 				ELSE COL_QRZCOM_QSO_UPLOAD_STATUS
 				END
-				WHERE COL_PRIMARY_KEY IN (".implode(',',json_decode($ids, true)).")";
+				WHERE COL_PRIMARY_KEY IN (".implode(',', $sanitized_ids).")";
 			$binding[] = $sent;
 			$binding[] = $method;
 			$this->db->query($sql, $binding);
@@ -1259,7 +1397,7 @@ class Logbookadvanced_model extends CI_Model {
 		if ($ids == null) {
 			$sql = "UPDATE ".$this->config->item('table_name')." JOIN dxcc_entities ON ". $this->config->item('table_name').".col_dxcc = dxcc_entities.adif JOIN station_profile ON ". $this->config->item('table_name').".station_id = station_profile.station_id" .
 					" SET " . $this->config->item('table_name').".COL_CQZ = dxcc_entities.cqz" .
-					" WHERE station_profile.user_id = ? and (" . $this->config->item('table_name').".COL_CQZ IS NULL OR " . $this->config->item('table_name').".COL_CQZ = '')";
+					" WHERE station_profile.user_id = ? and " . $this->config->item('table_name') . ".COL_CQZ IS NULL";
 
 			$query = $this->db->query($sql, array($this->session->userdata('user_id')));
 			return $this->db->affected_rows();
@@ -1277,7 +1415,7 @@ class Logbookadvanced_model extends CI_Model {
 		if ($ids == null) {
 			$sql = "UPDATE ".$this->config->item('table_name')." JOIN dxcc_entities ON ". $this->config->item('table_name').".col_dxcc = dxcc_entities.adif JOIN station_profile ON ". $this->config->item('table_name').".station_id = station_profile.station_id" .
 					" SET " . $this->config->item('table_name').".COL_ITUZ = dxcc_entities.ituz" .
-					" WHERE station_profile.user_id = ? and (" . $this->config->item	('table_name').".COL_ITUZ IS NULL OR " . $this->config->item('table_name').".COL_ITUZ = '')";
+					" WHERE station_profile.user_id = ? and " . $this->config->item('table_name') . ".COL_ITUZ IS NULL";
 			$query = $this->db->query($sql, array($this->session->userdata('user_id')));
 			return $this->db->affected_rows();
 		}
@@ -1415,7 +1553,8 @@ class Logbookadvanced_model extends CI_Model {
 			JOIN station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id
 			SET col_cont = dxcc_entities.cont
 			WHERE (COALESCE(" . $this->config->item('table_name') . ".col_cont, '') = ''  or " . $this->config->item('table_name') . ".col_cont not in ('AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA'))
-			and station_profile.user_id = ?";
+			AND station_profile.user_id = ?
+			AND col_dxcc != 0";
 
 		$query = $this->db->query($sql, array($this->session->userdata('user_id')));
 		$result = $this->db->affected_rows();
@@ -1477,8 +1616,10 @@ class Logbookadvanced_model extends CI_Model {
 				return $this->check_missing_distance();
 			case 'checkcontinent':
 				return $this->check_qsos_missing_continent();
-			case 'checkdxcc':
+			case 'checkmissingdxcc':
 				return $this->check_missing_dxcc();
+			case 'checkdxcc':
+				return $this->check_dxcc();
 			case 'checkstate':
 				return $this->check_missing_state();
 			case 'checkcqzones':
@@ -1487,8 +1628,56 @@ class Logbookadvanced_model extends CI_Model {
 				return $this->check_missing_itu_zones();
 			case 'checkgrids':
 				return $this->getMissingGridQsos();
-			return null;
+			case 'checkincorrectgridsquares':
+				return $this->getIncorrectGridsquares();
+			case 'checkincorrectcqzones':
+				return $this->getIncorrectCqZones();
+			case 'checkincorrectituzones':
+				return $this->getIncorrectItuZones();
+			default:
+				return null;
 		}
+	}
+	/*
+	 * Get list of QSOs with gridsquares that do not match the gridsquares listed for the DXCC.
+	 * The data comes from the TQSL published Gridsquare list for DXCCs.
+	 */
+	public function getIncorrectGridsquares() {
+		$sqlcheck = "select count(*) as count from vuccgrids";;
+		$querycheck = $this->db->query($sqlcheck);
+		$rowcheck = $querycheck->row();
+		if ($rowcheck->count == 0) {
+			return ['status' => 'error', 'message' => __("VuccGrids table is empty. Please import the VUCC grids data first.")];
+		}
+
+		$sql = "select col_primary_key, col_time_on, col_call, col_band, col_gridsquare, col_dxcc, col_country, station_profile_name, col_lotw_qsl_rcvd, col_mode, col_submode,
+			(
+			select group_concat(distinct gridsquare order by gridsquare separator ', ')
+			from vuccgrids
+			where adif = thcv.col_dxcc
+				order by gridsquare asc
+			) as correctgridsquare
+		from " . $this->config->item('table_name') . " thcv
+		join station_profile on thcv.station_id = station_profile.station_id
+		join dxcc_entities on dxcc_entities.adif = thcv.COL_DXCC
+		where station_profile.user_id = ?
+		and thcv.col_dxcc > 0
+		and not exists (
+			select 1
+			from vuccgrids
+			where adif = thcv.col_dxcc
+			and gridsquare = substr(thcv.col_gridsquare, 1, 4)
+		)
+		and exists (select 1 from vuccgrids where adif = thcv.col_dxcc)
+		and thcv.col_dxcc > 0
+		and thcv.col_gridsquare is not null
+		and thcv.col_gridsquare <> ''
+		order by station_profile_name, col_time_on desc";
+
+		$bindings[] = [$this->session->userdata('user_id')];
+
+		$query = $this->db->query($sql, $bindings);
+		return $query->result();
 	}
 
 	public function check_missing_dxcc() {
@@ -1507,8 +1696,6 @@ class Logbookadvanced_model extends CI_Model {
 			join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id
 			where user_id = ?
 			and (coalesce(col_cont, '') = '' or col_cont not in ('AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA'))
-			and col_dxcc is not null
-			and col_dxcc != ''
 			and col_dxcc != 0";
 
 		$bindings[] = [$this->session->userdata('user_id')];
@@ -1556,7 +1743,7 @@ class Logbookadvanced_model extends CI_Model {
 		$sql = "select count(*) as count from " . $this->config->item('table_name') . "
 		join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id
 		join dxcc_entities on " . $this->config->item('table_name') . ".col_dxcc = dxcc_entities.adif
-		where user_id = ? and coalesce(col_cqz, '') = ''";
+		where user_id = ? and col_cqz is NULL";
 
 		$bindings[] = [$this->session->userdata('user_id')];
 
@@ -1568,7 +1755,7 @@ class Logbookadvanced_model extends CI_Model {
 		$sql = "select count(*) as count from " . $this->config->item('table_name') . "
 		join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id
 		join dxcc_entities on " . $this->config->item('table_name') . ".col_dxcc = dxcc_entities.adif
-		where user_id = ? and coalesce(col_ituz, '') = ''";
+		where user_id = ? and col_ituz is NULL";
 
 		$bindings[] = [$this->session->userdata('user_id')];
 
@@ -1583,7 +1770,7 @@ class Logbookadvanced_model extends CI_Model {
 	 * @return array Result array with success, dxcc_name, dxcc_number, state_code, skipped
 	 */
 	function fixStateBatch($dxcc) {
-		$this->load->library('Geojson');
+		$this->load->library('Geojson', $dxcc);
 
 		// Get QSO data
 		$sql = "SELECT COL_PRIMARY_KEY, COL_CALL, COL_GRIDSQUARE, COL_DXCC, COL_STATE, d.name as dxcc_name, station_profile.station_profile_name
@@ -1605,13 +1792,17 @@ class Logbookadvanced_model extends CI_Model {
 		}
 
 		$results = [];
-
-		$count = 0;
+		$batch_updates = [];
 
 		foreach ($query->result() as $qso) {
-			$result = $this->fixStateSingle($qso->COL_PRIMARY_KEY);
+			$result = $this->fixStateDxcc($qso);
+
 			if ($result['success']) {
-				$count++;
+				// Prepare data for batch update
+				$batch_updates[] = [
+					'COL_PRIMARY_KEY' => $qso->COL_PRIMARY_KEY,
+					'COL_STATE' => $result['state_code']
+				];
 			} else {
 				$result['station_profile_name'] = $qso->station_profile_name;
 				$result['id'] = $qso->COL_PRIMARY_KEY;
@@ -1620,9 +1811,57 @@ class Logbookadvanced_model extends CI_Model {
 			}
 		}
 
+		// Perform batch update if there are any updates
+		$count = 0;
+		if (!empty($batch_updates)) {
+			$this->db->update_batch($this->config->item('table_name'), $batch_updates, 'COL_PRIMARY_KEY');
+			$count = count($batch_updates);
+		}
+
 		$results['count'] = $count;
 
 		return $results;
+	}
+
+	/**
+	 * Fix state for a batch of QSOs, based on the DXCC
+	 * Note: This now only validates and prepares data
+	 *
+	 * @param object $qso QSO object
+	 * @return array Result array with success, dxcc_name, dxcc_number, state_code, skipped
+	 */
+	function fixStateDxcc($qso) {
+		$callsign = $qso->COL_CALL ?? 'Unknown';
+		$dxcc = (int)$qso->COL_DXCC;
+		$gridsquare = $qso->COL_GRIDSQUARE;
+		$state = $qso->COL_STATE ?? '';
+		$dxcc_name = $qso->dxcc_name ?? 'Unknown';
+
+		// Find state from gridsquare
+		$state = $this->geojson->findStateFromGridsquare($gridsquare, $dxcc);
+
+		if ($state === null || !isset($state['code'])) {
+			return [
+				'success' => false,
+				'skipped' => false,
+				'callsign' => $callsign,
+				'dxcc_number' => $dxcc,
+				'dxcc_name' => $dxcc_name,
+				'gridsquare' => $gridsquare,
+				'reason' => 'State not found in GeoJSON'
+			];
+		}
+
+		// Return success with state info
+		return [
+			'success' => true,
+			'skipped' => false,
+			'callsign' => $callsign,
+			'dxcc_number' => $dxcc,
+			'dxcc_name' => $dxcc_name,
+			'state_code' => $state['code'],
+			'state_name' => $state['name'] ?? null
+		];
 	}
 
 	function getStateListQsos($dxcc) {
@@ -1697,6 +1936,10 @@ class Logbookadvanced_model extends CI_Model {
 		return $query->result();
 	}
 
+	/*
+		Function to run batch fixes on the logbook.
+		Used in dbtools section.
+	*/
 	function batchFix($type) {
 		switch ($type) {
 			case 'dxcc':
@@ -1719,34 +1962,47 @@ class Logbookadvanced_model extends CI_Model {
 	/*
 		Another function moved from update to the advanced logbook, to be used in the dbtools section.
 		It did not have filter on user or location.
+		This function will check all QSOs with missing grid square and try to fill them using the callbook lookup.
 	*/
 	public function check_missing_grid() {
 		$result = $this->getMissingGridQsos();
 
 		$count = 0;
+		$batch_updates = [];
+
 		$this->db->trans_start();
+
 		if (count($result) > 0) {
+			if (!$this->load->is_loaded('callbook')) {
+				$this->load->library('callbook');
+			}
+
 			foreach ($result as $row) {
 				$callsign = $row->col_call;
-				if (!$this->load->is_loaded('callbook')) {
-					$this->load->library('callbook');
-				}
-
 				$callbook = $this->callbook->getCallbookData($callsign);
 
 				if (isset($callbook)) {
 					if (isset($callbook['error'])) {
 						log_message('error', "Error: " . $callbook['error']);
 					} else {
-						if ($callbook['gridsquare'] != '') {
-							$sql = "update " . $this->config->item('table_name') . " set COL_GRIDSQUARE = ? where COL_PRIMARY_KEY = ?";
-							$this->db->query($sql, array($callbook['gridsquare'], $row->col_primary_key));
-							$count++;
+						if (isset($callbook['gridsquare']) && $callbook['gridsquare'] != '') {
+							// Prepare data for batch update
+							$batch_updates[] = [
+								'COL_PRIMARY_KEY' => $row->col_primary_key,
+								'COL_GRIDSQUARE' => $callbook['gridsquare']
+							];
 						}
 					}
 				}
 			}
+
+			// Perform batch update if there are any updates
+			if (!empty($batch_updates)) {
+				$this->db->update_batch($this->config->item('table_name'), $batch_updates, 'COL_PRIMARY_KEY');
+				$count = count($batch_updates);
+			}
 		}
+
 		$this->db->trans_complete();
 
 		return $count;
@@ -1758,9 +2014,146 @@ class Logbookadvanced_model extends CI_Model {
 				WHERE station_profile.user_id = ?
 				AND (qsos.COL_GRIDSQUARE IS NULL OR qsos.COL_GRIDSQUARE = '')
 				AND (qsos.COL_VUCC_GRIDS IS NULL OR qsos.COL_VUCC_GRIDS = '')
-				ORDER BY COL_TIME_ON DESC limit 250";
+				ORDER BY COL_TIME_ON DESC limit 150";
 
 		$query = $this->db->query($sql, [$this->session->userdata('user_id')]);
+
+		return $query->result();
+	}
+
+	/*
+		Check all QSOs DXCC against current DXCC database
+	*/
+	public function check_dxcc() {
+
+		$i = 0;
+		$result = array();
+
+		$callarray = $this->getQsos();
+
+		// Starting clock time in seconds
+		$start_time = microtime(true);
+		$dxccobj = new Dxcc(null);
+
+		foreach ($callarray->result() as $call) {
+
+            $i++;
+			$dxcc = $dxccobj->dxcc_lookup($call->col_call, $call->date);
+
+            $dxcc['adif'] = (isset($dxcc['adif'])) ? $dxcc['adif'] : 0;
+            $dxcc['entity'] = (isset($dxcc['entity'])) ? $dxcc['entity'] : 'None';
+
+            if (($call->col_dxcc ?? 'Unset') != $dxcc['adif']) {
+                $result[] = array(
+                                'callsign'          => $call->col_call,
+								'qso_date'          => $call->date,
+								'mode'              => isset($call->col_mode) ? $call->col_mode : '',
+								'submode'           => isset($call->col_submode) ? $call->col_submode : '',
+								'band'              => isset($call->col_band) ? $call->col_band : '',
+								'lotw_qsl_rcvd'     => isset($call->col_lotw_qsl_rcvd) ? $call->col_lotw_qsl_rcvd : '',
+								'station_profile'   => $call->station_profile_name,
+                                'existing_dxcc'     => $call->col_country,
+                                'existing_adif'     => $call->col_dxcc,
+                                'result_country'    => ucwords(strtolower($dxcc['entity']), "- (/"),
+                                'result_adif'       => $dxcc['adif'],
+								'id' 			    => $call->col_primary_key,
+                            );
+            }
+        }
+
+        // End clock time in seconds
+        $end_time = microtime(true);
+
+        // Calculate script execution time
+        $execution_time = ($end_time - $start_time);
+
+        $data['execution_time'] = $execution_time;
+        $data['calls_tested'] = $i;
+		$data['result'] = $result;
+
+		return $data;
+	}
+
+	function getQsos() {
+		$sql = 'select distinct col_country, col_call, col_dxcc, date(col_time_on) date, col_mode, col_submode, col_band, col_lotw_qsl_rcvd, station_profile.station_profile_name, col_primary_key
+			from ' . $this->config->item('table_name') . '
+			join station_profile on ' . $this->config->item('table_name') . '.station_id = station_profile.station_id
+			where station_profile.user_id = ?';
+		$params[] = array($this->session->userdata('user_id'));
+
+		$sql .= ' order by station_profile.station_profile_name asc, date desc';
+
+        $query = $this->db->query($sql, $params);
+
+		return $query;
+	}
+
+	function fixDxccSelected($ids) {
+		$sql = "select COL_PRIMARY_KEY, COL_CALL, COL_TIME_ON, COL_TIME_OFF, station_profile.station_profile_name from " . $this->config->item('table_name') .
+		" join station_profile on " . $this->config->item('table_name') . ".station_id = station_profile.station_id
+		where station_profile.user_id = ? and " . $this->config->item('table_name') . ".col_primary_key in ?";
+
+		$r = $this->db->query($sql, array($this->session->userdata('user_id'), json_decode($ids, true)));
+
+		$count = 0;
+		$dxccobj = new Dxcc(null);
+
+		if ($r->num_rows() > 0) { //query dxcc_prefixes
+			$sql = "update " . $this->config->item('table_name') . " set COL_COUNTRY = ?, COL_DXCC = ? where COL_PRIMARY_KEY = ?";
+			$q = $this->db->conn_id->prepare($sql);
+			foreach ($r->result_array() as $row) {
+				$qso_date = $row['COL_TIME_OFF'] == '' ? $row['COL_TIME_ON'] : $row['COL_TIME_OFF'];
+				$qso_date = date("Y-m-d", strtotime($qso_date));
+				$dxcc = $dxccobj->dxcc_lookup($row['COL_CALL'], $qso_date);
+				$dxcc['adif'] = (isset($dxcc['adif'])) ? $dxcc['adif'] : 0;
+				$dxcc['entity'] = (isset($dxcc['entity'])) ? $dxcc['entity'] : 'None';
+				if ($dxcc['adif'] != 'Not Found') {
+					$q->execute(array(addslashes(ucwords(strtolower($dxcc['entity']), "- (/")), $dxcc['adif'], $row['COL_PRIMARY_KEY']));
+					$count++;
+				}
+			}
+		}
+
+		$result['count'] = $count;
+		return $result;
+	}
+
+	function getIncorrectCqZones() {
+		if(!clubaccess_check(9)) return;
+
+		$sql = "select *, (select group_concat(distinct cqzone order by cqzone separator ', ') from dxcc_master where countrycode = thcv.col_dxcc and cqzone <> '' order by cqzone asc) as correctcqzone
+		from " . $this->config->item('table_name') . " thcv
+		join station_profile on thcv.station_id = station_profile.station_id
+		where station_profile.user_id = ?
+		and not exists (select 1 from dxcc_master where countrycode = thcv.col_dxcc and cqzone = col_cqz) and col_dxcc > 0
+		";
+
+		$params[] = $this->session->userdata('user_id');
+
+		$sql .= " order by station_profile.station_profile_name, thcv.col_time_on desc
+		limit 5000";
+
+		$query = $this->db->query($sql, $params);
+
+		return $query->result();
+	}
+
+	function getIncorrectItuZones() {
+		if(!clubaccess_check(9)) return;
+
+		$sql = "select *, (select group_concat(distinct ituzone order by ituzone separator ', ') from dxcc_master where countrycode = thcv.col_dxcc and ituzone <> '' order by ituzone asc) as correctituzone
+		from " . $this->config->item('table_name') . " thcv
+		join station_profile on thcv.station_id = station_profile.station_id
+		where station_profile.user_id = ?
+		and not exists (select 1 from dxcc_master where countrycode = thcv.col_dxcc and ituzone = col_ituz) and col_dxcc > 0
+		";
+
+		$params[] = $this->session->userdata('user_id');
+
+		$sql .= " order by station_profile.station_profile_name, thcv.col_time_on desc
+		limit 5000";
+
+		$query = $this->db->query($sql, $params);
 
 		return $query->result();
 	}

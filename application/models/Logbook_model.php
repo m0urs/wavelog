@@ -173,15 +173,33 @@ class Logbook_model extends CI_Model {
 			$tx_power = null;
 		}
 
-		if ($this->input->post('country') == "") {
+		if (($this->input->post('radio',TRUE) ?? '') == 'ws') {	// WebSocket
+			$radio_name=$this->input->post('radio_ws_name',TRUE);
+		} elseif (($this->input->post('radio',TRUE) ?? 0) != 0) {
+			$this->load->model('cat');
+			$radio_name=$this->cat->radio_status($this->input->post('radio',TRUE))->row()->radio ?? '';
+		} else {
+			$radio_name='';
+		}
+
+		// Cache DXCC lookup to avoid calling check_dxcc_table() 4 times
+		$dxcc = null;
+		$needs_dxcc_lookup = ($this->input->post('country') == "" ||
+		                      $this->input->post('cqz') == "" ||
+		                      $this->input->post('dxcc_id') == "" ||
+		                      $this->input->post('continent') == "");
+
+		if ($needs_dxcc_lookup) {
 			$dxcc = $this->check_dxcc_table(strtoupper(trim($callsign)), $datetime);
+		}
+
+		if ($this->input->post('country') == "") {
 			$country = ucwords(strtolower($dxcc[1]), "- (/");
 		} else {
 			$country = $this->input->post('country');
 		}
 
 		if ($this->input->post('cqz') == "") {
-			$dxcc = $this->check_dxcc_table(strtoupper(trim($callsign)), $datetime);
 			if (empty($dxcc[2])) {
 				$cqz = null;
 			} else {
@@ -192,8 +210,6 @@ class Logbook_model extends CI_Model {
 		}
 
 		if ($this->input->post('dxcc_id') == "") {
-
-			$dxcc = $this->check_dxcc_table(strtoupper(trim($callsign)), $datetime);
 			if (empty($dxcc[0])) {
 				$dxcc_id = null;
 			} else {
@@ -204,8 +220,6 @@ class Logbook_model extends CI_Model {
 		}
 
 		if ($this->input->post('continent') == "") {
-
-			$dxcc = $this->check_dxcc_table(strtoupper(trim($callsign)), $datetime);
 			if (empty($dxcc[3])) {
 				$continent = null;
 			} else {
@@ -466,6 +480,7 @@ class Logbook_model extends CI_Model {
 			$data['COL_MY_CNTY'] = strtoupper(trim($station['station_cnty']));
 			$data['COL_MY_CQ_ZONE'] = strtoupper(trim($station['station_cq']));
 			$data['COL_MY_ITU_ZONE'] = strtoupper(trim($station['station_itu']));
+			$data['COL_MY_RIG'] = trim($radio_name ?? '');
 
 			// if there are any static map images for this station, remove them so they can be regenerated
 			if (!$this->load->is_loaded('staticmap_model')) {
@@ -911,67 +926,77 @@ class Logbook_model extends CI_Model {
 			// No point in fetching hrdlog code or qrz api key and qrzrealtime setting if we're skipping the export
 			if (!$skipexport) {
 
-				$result = $this->exists_clublog_credentials($data['station_id']);
-				if (isset($result->ucp) && isset($result->ucn) && (($result->ucp ?? '') != '') && (($result->ucn ?? '') != '') && ($result->clublogrealtime == 1)) {
+				// Fetch all credentials in a single query (optimization: reduces 4 queries to 1)
+				$creds = $this->get_all_export_credentials($data['station_id']);
+
+				// Cache QSO data once if any real-time export is enabled (avoids 4 identical queries with 8 joins each)
+				$qso = null;
+				$needs_qso_lookup = (
+					$creds && (
+					(isset($creds->ucp) && isset($creds->ucn) && $creds->clublogrealtime == 1) ||
+					(isset($creds->hrdlog_code) && isset($creds->hrdlog_username) && $creds->hrdlogrealtime == 1) ||
+					(isset($creds->qrzapikey) && $creds->qrzrealtime == 1) ||
+					(isset($creds->webadifapikey) && $creds->webadifrealtime == 1)
+					)
+				);
+
+				if ($needs_qso_lookup) {
+					$qso = $this->get_qso($last_id, true)->result();
+				}
+
+				// ClubLog export
+				if ($creds && isset($creds->ucp) && isset($creds->ucn) && (($creds->ucp ?? '') != '') && (($creds->ucn ?? '') != '') && ($creds->clublogrealtime == 1)) {
 					if (!$this->load->is_loaded('AdifHelper')) {
 						$this->load->library('AdifHelper');
 					}
-					$qso = $this->get_qso($last_id, true)->result();
 
 					if (!$this->load->is_loaded('clublog_model')) {
 						$this->load->model('clublog_model');
 					}
 
 					$adif = $this->adifhelper->getAdifLine($qso[0]);
-					$result = $this->clublog_model->push_qso_to_clublog($result->ucn, $result->ucp, $data['COL_STATION_CALLSIGN'], $adif, $data['station_id']);
+					$result = $this->clublog_model->push_qso_to_clublog($creds->ucn, $creds->ucp, $data['COL_STATION_CALLSIGN'], $adif, $data['station_id']);
 					if ($result['status'] == 'OK') {
 						$this->mark_clublog_qsos_sent($last_id);
 					}
 				}
 
-				$result = '';
-				$result = $this->exists_hrdlog_credentials($data['station_id']);
-				// Push qso to hrdlog if code is set, and realtime upload is enabled, and we're not importing an adif-file
-				if (isset($result->hrdlog_code) && isset($result->hrdlog_username) && $result->hrdlogrealtime == 1) {
+				// HRDLog export
+				if ($creds && isset($creds->hrdlog_code) && isset($creds->hrdlog_username) && $creds->hrdlogrealtime == 1) {
 					if (!$this->load->is_loaded('AdifHelper')) {
 						$this->load->library('AdifHelper');
 					}
-					$qso = $this->get_qso($last_id, true)->result();
 
 					$adif = $this->adifhelper->getAdifLine($qso[0]);
-					$result = $this->push_qso_to_hrdlog($result->hrdlog_username, $result->hrdlog_code, $adif);
+					$result = $this->push_qso_to_hrdlog($creds->hrdlog_username, $creds->hrdlog_code, $adif);
 					if (($result['status'] == 'OK') || (($result['status'] == 'error') || ($result['status'] == 'duplicate') || ($result['status'] == 'auth_error'))) {
 						$this->mark_hrdlog_qsos_sent($last_id);
 					}
 				}
-				$result = ''; // Empty result from previous hrdlog-attempt for safety
-				$result = $this->exists_qrz_api_key($data['station_id']);
-				// Push qso to qrz if apikey is set, and realtime upload is enabled, and we're not importing an adif-file
-				if (isset($result->qrzapikey) && $result->qrzrealtime == 1) {
+
+				// QRZ export
+				if ($creds && isset($creds->qrzapikey) && $creds->qrzrealtime == 1) {
 					if (!$this->load->is_loaded('AdifHelper')) {
 						$this->load->library('AdifHelper');
 					}
-					$qso = $this->get_qso($last_id, true)->result();
 
 					$adif = $this->adifhelper->getAdifLine($qso[0]);
-					$result = $this->push_qso_to_qrz($result->qrzapikey, $adif);
+					$result = $this->push_qso_to_qrz($creds->qrzapikey, $adif);
 					if (($result['status'] == 'OK') || (($result['status'] == 'error') && ($result['message'] == 'STATUS=FAIL&REASON=Unable to add QSO to database: duplicate&EXTENDED='))) {
 						$this->mark_qrz_qsos_sent($last_id);
 					}
 				}
 
-				$result = $this->exists_webadif_api_key($data['station_id']);
-				// Push qso to webadif if apikey is set, and realtime upload is enabled, and we're not importing an adif-file
-				if (isset($result->webadifapikey) && $result->webadifrealtime == 1) {
+				// WebADIF export
+				if ($creds && isset($creds->webadifapikey) && $creds->webadifrealtime == 1) {
 					if (!$this->load->is_loaded('AdifHelper')) {
 						$this->load->library('AdifHelper');
 					}
-					$qso = $this->get_qso($last_id, true)->result();
 
 					$adif = $this->adifhelper->getAdifLine($qso[0]);
 					$result = $this->push_qso_to_webadif(
-						$result->webadifapiurl,
-						$result->webadifapikey,
+						$creds->webadifapiurl,
+						$creds->webadifapikey,
 						$adif
 					);
 
@@ -1061,6 +1086,31 @@ class Logbook_model extends CI_Model {
 	}
 
 	/*
+	 * Optimized function to fetch all export credentials in a single query
+	 * Returns object with all credential properties for all services
+	 */
+	function get_all_export_credentials($station_id) {
+		$sql = 'SELECT
+					prof.hrdlog_username, prof.hrdlog_code, prof.hrdlogrealtime,
+					prof.qrzapikey, prof.qrzrealtime,
+					prof.webadifapikey, prof.webadifapiurl, prof.webadifrealtime,
+					prof.clublogrealtime,
+					auth.user_clublog_name as ucn, auth.user_clublog_password as ucp
+				FROM station_profile prof
+				INNER JOIN ' . $this->config->item('auth_table') . ' auth ON (auth.user_id = prof.user_id)
+				WHERE prof.station_id = ?';
+
+		$query = $this->db->query($sql, $station_id);
+		$result = $query->row();
+
+		if ($result) {
+			return $result;
+		} else {
+			return false;
+		}
+	}
+
+	/*
    * Function uploads a QSO to HRDLog with the API given.
    * $adif contains a line with the QSO in the ADIF format. QSO ends with an <EOR>
    */
@@ -1085,8 +1135,8 @@ class Logbook_model extends CI_Model {
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
 		curl_setopt($ch, CURLOPT_HEADER, 0);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/x-www-form-urlencoded'));
 		$content = curl_exec($ch);
 		if ($content) {
@@ -1140,6 +1190,8 @@ class Logbook_model extends CI_Model {
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
 		curl_setopt($ch, CURLOPT_HEADER, 0);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 		curl_setopt($ch, CURLOPT_USERAGENT, 'Wavelog/'.$this->optionslib->get_option('version'));
 		$content = curl_exec($ch);
 		if ($content) {
@@ -1182,6 +1234,8 @@ class Logbook_model extends CI_Model {
 		curl_setopt($ch, CURLOPT_HEADER, 0);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 
 		$content = curl_exec($ch); // TODO: better error handling
 		$errors = curl_error($ch);
@@ -1325,6 +1379,7 @@ class Logbook_model extends CI_Model {
 			$ch = curl_init();
 			curl_setopt($ch, CURLOPT_URL, $url);
 			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 5);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_exec($ch);
 		}
@@ -3452,6 +3507,41 @@ class Logbook_model extends CI_Model {
 		return $query;
 	}
 
+	function totals_year_month($year = null) {
+
+		$this->load->model('logbooks_model');
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+
+		if (!$logbooks_locations_array) {
+			return null;
+		}
+
+		$location_list = implode(',', array_fill(0, count($logbooks_locations_array), '?'));
+		$params = $logbooks_locations_array;
+
+		if ($year === null || $year === 'All') {
+			// Aggregate across all years
+			$sql = "SELECT DATE_FORMAT(COL_TIME_ON, '%m') AS month, COUNT(COL_PRIMARY_KEY) AS total
+					FROM " . $this->config->item('table_name') . "
+					WHERE station_id IN ($location_list)
+					GROUP BY DATE_FORMAT(COL_TIME_ON, '%m')
+					ORDER BY month ASC";
+		} else {
+			// Filter by specific year
+			$sql = "SELECT DATE_FORMAT(COL_TIME_ON, '%m') AS month, COUNT(COL_PRIMARY_KEY) AS total
+					FROM " . $this->config->item('table_name') . "
+					WHERE station_id IN ($location_list)
+					AND DATE_FORMAT(COL_TIME_ON, '%Y') = ?
+					GROUP BY DATE_FORMAT(COL_TIME_ON, '%m')
+					ORDER BY month ASC";
+			$params[] = $year;
+		}
+
+		$query = $this->db->query($sql, $params);
+
+		return $query;
+	}
+
 	/* Return total number of qsos */
 	function total_qsos($StationLocationsArray = null, $api_key = null) {
 		if ($StationLocationsArray == null) {
@@ -4717,7 +4807,7 @@ class Logbook_model extends CI_Model {
 
 		if (($band ?? '') == '') {
 			log_message("Error", "Trying to import QSO without Band for station_id " . $station_id . ". QSO Date/Time: " . $time_on . " at ".($record['freq'] ?? 'N/A')." Mode: " . ($record['mode'] ?? '') . " Call: " . ($record['call'] ?? ''));
-			$returner['error']=sprintf(__("QSO on %s: You tried to import a QSO without any given Band. This QSO wasn't imported. It's invalid"), $time_on);
+			$returner['error']=sprintf(__("QSO on %s: You tried to import a QSO without any given Band. This QSO wasn't imported. It's invalid"), $time_on) . '<br>';
 
 			return($returner);
 		}
@@ -6151,9 +6241,7 @@ class Logbook_model extends CI_Model {
 			'COL_LOTW_QSL_SENT' => 'Y',
 		);
 
-
 		$this->db->where('COL_PRIMARY_KEY', $qso_id);
-
 		$this->db->update($this->config->item('table_name'), $data);
 
 		return "Updated";

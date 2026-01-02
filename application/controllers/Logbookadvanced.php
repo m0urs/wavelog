@@ -145,6 +145,10 @@ class Logbookadvanced extends CI_Controller {
 			'wwff' => xss_clean($this->input->post('wwff')),
 			'qslimages' => xss_clean($this->input->post('qslimages')),
 			'dupes' => xss_clean($this->input->post('dupes')),
+			'dupedate' => xss_clean($this->input->post('dupedate')),
+			'dupemode' => xss_clean($this->input->post('dupemode')),
+			'dupeband' => xss_clean($this->input->post('dupeband')),
+			'dupesat' => xss_clean($this->input->post('dupesat')),
 			'operator' => xss_clean($this->input->post('operator')),
 			'contest' => xss_clean($this->input->post('contest')),
 			'invalid' => xss_clean($this->input->post('invalid')),
@@ -611,6 +615,7 @@ class Logbookadvanced extends CI_Controller {
 		$json_string['qth']['show'] = $this->def_boolean($this->input->post('qth'));
 		$json_string['frequency']['show'] = $this->def_boolean($this->input->post('frequency'));
 		$json_string['dcl']['show'] = $this->def_boolean($this->input->post('dcl'));
+		$json_string['last_modification']['show'] = $this->def_boolean($this->input->post('last_modification'));
 
 		$obj['column_settings']= json_encode($json_string);
 
@@ -751,40 +756,10 @@ class Logbookadvanced extends CI_Controller {
 		$ids = xss_clean($this->input->post('ids'));
 
 		$this->load->model('logbookadvanced_model');
-		$this->logbookadvanced_model->fixCqZones($ids);
-
-		$data = $this->logbookadvanced_model->getQsosForAdif($ids, $this->session->userdata('user_id'));
-
-		$results = $data->result('array');
-
-		$qsos = [];
-		foreach ($results as $data) {
-			$qsos[] = new QSO($data);
-		}
-
-		$q = [];
-		// Get Date format
-		if($this->session->userdata('user_date_format')) {
-			// If Logged in and session exists
-			$custom_date_format = $this->session->userdata('user_date_format');
-		} else {
-			// Get Default date format from /config/wavelog.php
-			$custom_date_format = $this->config->item('qso_date_format');
-		}
-
-		foreach ($qsos as $qso) {
-			$singleQso = $qso->toArray();
-			$flag = $this->dxccflag->get($qso->getDXCCId());
-			if ($flag != null) {
-				$singleQso['flag'] = ' '.$flag;
-			} else {
-				$singleQso['flag'] = '';
-			}
-			$q[]=$singleQso;
-		}
+		$result = $this->logbookadvanced_model->fixCqZones($ids);
 
 		header("Content-Type: application/json");
-		print json_encode($q);
+		print json_encode($result);
 	}
 
 	public function fixItuZones() {
@@ -793,40 +768,10 @@ class Logbookadvanced extends CI_Controller {
 		$ids = xss_clean($this->input->post('ids'));
 
 		$this->load->model('logbookadvanced_model');
-		$this->logbookadvanced_model->fixItuZones($ids);
-
-		$data = $this->logbookadvanced_model->getQsosForAdif($ids, $this->session->userdata('user_id'));
-
-		$results = $data->result('array');
-
-		$qsos = [];
-		foreach ($results as $data) {
-			$qsos[] = new QSO($data);
-		}
-
-		$q = [];
-		// Get Date format
-		if($this->session->userdata('user_date_format')) {
-			// If Logged in and session exists
-			$custom_date_format = $this->session->userdata('user_date_format');
-		} else {
-			// Get Default date format from /config/wavelog.php
-			$custom_date_format = $this->config->item('qso_date_format');
-		}
-
-		foreach ($qsos as $qso) {
-			$singleQso = $qso->toArray();
-			$flag = $this->dxccflag->get($qso->getDXCCId());
-			if ($flag != null) {
-				$singleQso['flag'] = ' '.$flag;
-			} else {
-				$singleQso['flag'] = '';
-			}
-			$q[]=$singleQso;
-		}
+		$result = $this->logbookadvanced_model->fixItuZones($ids);
 
 		header("Content-Type: application/json");
-		print json_encode($q);
+		print json_encode($result);
 	}
 
 	public function fixContinent() {
@@ -980,6 +925,25 @@ class Logbookadvanced extends CI_Controller {
 		$data['type'] = $type;
 
 		$this->load->view('logbookadvanced/showUpdateResult', $data);
+	}
+
+	function dupeSearchDialog() {
+		if(!clubaccess_check(9)) return;
+
+		$this->load->view('logbookadvanced/dupesearchdialog');
+	}
+
+	function fixDxccSelected() {
+		if(!clubaccess_check(9)) return;
+
+		$ids = xss_clean($this->input->post('ids'));
+
+		$this->load->model('logbookadvanced_model');
+		$result = $this->logbookadvanced_model->fixDxccSelected($ids);
+		$result['message'] = '<div class="alert alert-' . ($result['count'] == 0 ? 'danger' : 'success') . '" role="alert">' . sprintf(__("DXCC updated for %d QSO(s)."), $result['count']) . '</div>';
+
+		header("Content-Type: application/json");
+		print json_encode($result);
 	}
 
 }
