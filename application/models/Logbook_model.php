@@ -645,6 +645,39 @@ class Logbook_model extends CI_Model {
 				$this->db->where('COL_STATE', $state);
 				$this->db->where('COL_DXCC', '339');
 				break;
+			case 'WAIP':
+				// Exclude satellite contacts for Polska Award
+				$this->db->group_start();
+				$this->db->where('COL_PROP_MODE !=', 'SAT');
+				$this->db->or_where('COL_PROP_MODE IS NULL');
+				$this->db->group_end();
+
+				// Only count allowed bands for Polska Award
+				$this->db->where_in('COL_BAND', ['160M','80M','40M','30M','20M','17M','15M','12M','10M','6M','2M']);
+				$this->db->where('COL_DXCC in (225, 248)');
+				$this->db->where('COL_STATE', $searchphrase);
+				$this->db->where('COL_TIME_ON >=', '1948-06-02 00:00:00');
+
+				// Handle mode categories for Polska Award
+				if (strtoupper($mode) == 'PHONE') {
+					$this->db->group_start();
+					$this->db->where_in('UPPER(COL_MODE)', ['SSB','USB','LSB','AM','FM','SSTV']);
+					$this->db->or_where_in('UPPER(COL_SUBMODE)', ['SSB','USB','LSB','AM','FM','SSTV']);
+					$this->db->group_end();
+					$mode = ''; // Clear mode so it's not processed again later
+				} elseif (strtoupper($mode) == 'DIGI') {
+					$this->db->group_start();
+					$this->db->where_in('UPPER(COL_MODE)', ['RTTY','PSK','PSK31','PSK63','PSK125','PSKR','FSK','FSK441','FT4','FT8','JS8','JT4','JT6M','JT9','JT65','MFSK','OLIVIA','OPERA','PAX','PAX2','PKT','Q15','QRA64','ROS','T10','THOR','THRB','TOR','VARA','WSPR']);
+					$this->db->or_where_in('UPPER(COL_SUBMODE)', ['RTTY','PSK','PSK31','PSK63','PSK125','PSKR','FSK','FSK441','FT4','FT8','JS8','JT4','JT6M','JT9','JT65','MFSK','OLIVIA','OPERA','PAX','PAX2','PKT','Q15','QRA64','ROS','T10','THOR','THRB','TOR','VARA','WSPR']);
+					$this->db->group_end();
+					$mode = ''; // Clear mode so it's not processed again later
+				} elseif (strtoupper($mode) == 'CW') {
+					$this->db->where('UPPER(COL_MODE)', 'CW');
+					$mode = ''; // Clear mode so it's not processed again later
+				} elseif (strtoupper($mode) == 'MIXED') {
+					$mode = 'All'; // MIXED means all modes
+				}
+				break;
 			case 'WAPC':
 				if($searchphrase == 'HK'){
 					$this->db->where('COL_DXCC', '321');
@@ -692,6 +725,12 @@ class Logbook_model extends CI_Model {
 				break;
 			case 'QRZSDATE':
 				$this->db->where('date(COL_QRZCOM_QSO_UPLOAD_DATE)=date(SYSDATE())');
+				break;
+			case 'CLUBLOGRDATE':
+				$this->db->where('date(COL_CLUBLOG_QSO_DOWNLOAD_DATE)=date(SYSDATE())');
+				break;
+			case 'CLUBLOGSDATE':
+				$this->db->where('date(COL_CLUBLOG_QSO_UPLOAD_DATE)=date(SYSDATE())');
 				break;
 		}
 
@@ -1255,57 +1294,75 @@ class Logbook_model extends CI_Model {
 
 	function upload_amsat_status($data) {
 		$sat_name = '';
-		if ($data['COL_SAT_NAME'] == 'AO-7') {
-			if ($data['COL_BAND'] == '2m' && $data['COL_BAND_RX'] == '10m') {
-				$sat_name = 'AO-7[A]';
-			}
-			if ($data['COL_BAND'] == '70cm' && $data['COL_BAND_RX'] == '2m') {
-				$sat_name = 'AO-7[B]';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'QO-100') {
-			$sat_name = 'QO-100_NB';
-		} else if ($data['COL_SAT_NAME'] == 'AO-92') {
-			if ($data['COL_BAND'] == '70cm' && $data['COL_BAND_RX'] == '2m') {
-				$sat_name = 'AO-92_U/v';
-			}
-			if ($data['COL_BAND'] == '23cm' && $data['COL_BAND_RX'] == '2m') {
-				$sat_name = 'AO-92_L/v';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'AO-95') {
-			if ($data['COL_BAND'] == '70cm' && $data['COL_BAND_RX'] == '2m') {
-				$sat_name = 'AO-95_U/v';
-			}
-			if ($data['COL_BAND'] == '23cm' && $data['COL_BAND_RX'] == '2m') {
-				$sat_name = 'AO-95_L/v';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'PO-101') {
-			if ($data['COL_MODE'] == 'PKT') {
-				$sat_name = 'PO-101[APRS]';
-			} else {
-				$sat_name = 'PO-101[FM]';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'FO-118') {
-			if ($data['COL_BAND'] == '2m') {
-				if ($data['COL_MODE'] == 'FM') {
-					$sat_name = 'FO-118[V/u FM]';
-				} else if ($data['COL_MODE'] == 'SSB') {
-					$sat_name = 'FO-118[V/u]';
+		switch ($data['COL_SAT_NAME']) {
+			case 'AO-7':
+				if ($data['COL_BAND'] == '2m' && $data['COL_BAND_RX'] == '10m') {
+					$sat_name = 'AO-7_[V/a]';
 				}
-			} else if ($data['COL_BAND'] == '15m') {
-				$sat_name = 'FO-118[H/u]';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'ARISS' || $data['COL_SAT_NAME'] == 'ISS') {
-			if ($data['COL_MODE'] == 'FM') {
-				$sat_name = 'ISS-FM';
-			} else if ($data['COL_MODE'] == 'PKT') {
-				$sat_name = 'ISS-DATA';
-			}
-		} else if ($data['COL_SAT_NAME'] == 'CAS-3H') {
-			$sat_name = 'LilacSat-2';
-		} else if (preg_match('/TEV2-[1-9]/', ($data['COL_SAT_NAME'] ?? ''))) {
-			$sat_name = str_replace('TEV2-', 'TEVEL2-', ($data['COL_SAT_NAME'] ?? ''));
-		} else {
-			$sat_name = ($data['COL_SAT_NAME'] ?? '');
+				if ($data['COL_BAND'] == '70cm' && $data['COL_BAND_RX'] == '2m') {
+					$sat_name = 'AO-7_[U/v]';
+				}
+				break;
+			case 'QO-100':
+				$sat_name = 'QO-100_[NB]';
+				break;
+			case 'PO-101':
+				if ($data['COL_MODE'] == 'FM') {
+					$sat_name = 'PO-101_[FM]';
+				} else if ($data['COL_MODE'] == 'PKT') {
+					$sat_name = 'PO-101_[APRS]';
+				}
+				break;
+			case 'ARISS':
+			case 'ISS':
+				if ($data['COL_MODE'] == 'FM') {
+					$sat_name = 'ISS_[FM]';
+				} else if ($data['COL_MODE'] == 'PKT') {
+					$sat_name = 'ISS_[APRS]';
+				}
+				break;
+			case 'CAS-3H':
+				$sat_name = 'CAS-3H_[FM]';
+				break;
+			case 'AO-73':
+				$sat_name = 'AO-73_[U/v]';
+				break;
+			case 'AO-91':
+				$sat_name = 'AO-91_[FM]';
+				break;
+			case 'AO-123':
+				$sat_name = 'AO-123_[FM]';
+				break;
+			case 'FO-29':
+				$sat_name = 'FO-29_[V/u]';
+				break;
+			case 'IO-86':
+				$sat_name = 'IO-86_[FM]';
+				break;
+			case 'JO-97':
+				$sat_name = 'JO-97_[U/v]';
+				break;
+			case 'NO-44':
+				$sat_name = 'NO-44_[APRS]';
+				break;
+			case 'RS-44':
+				$sat_name = 'RS-44_[V/u]';
+				break;
+			case 'SO-125':
+				$sat_name = 'SO-125_[FM]';
+				break;
+			case 'SO-50':
+				$sat_name = 'SO-50_[FM]';
+				break;
+			case 'SONATE2':
+				if ($data['COL_MODE'] == 'PKT') {
+					$sat_name = 'SONATE-2_[APRS]';
+				} else {
+					$sat_name = 'SONATE-2_[SSTV]';
+				}
+				break;
+			default:
+				return;
 		}
 		$amsat_source_grid = '';
 		if (array_key_exists('COL_MY_GRIDSQUARE', $data)) {
@@ -3296,7 +3353,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3315,7 +3372,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3447,7 +3504,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3611,7 +3668,7 @@ class Logbook_model extends CI_Model {
 			$logbooks_locations_array = $StationLocationsArray;
 		}
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return [
 				'total' => 0,
 				'today' => 0,
@@ -3676,7 +3733,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 		$mode[] = 'SSB';
@@ -3702,7 +3759,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3725,7 +3782,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3764,7 +3821,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3787,7 +3844,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3809,7 +3866,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3832,7 +3889,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3859,7 +3916,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -3881,7 +3938,7 @@ class Logbook_model extends CI_Model {
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
 
-		if (!$logbooks_locations_array) {
+		if ($logbooks_locations_array[0] === -1) {
 			return null;
 		}
 
@@ -4294,6 +4351,8 @@ class Logbook_model extends CI_Model {
 				SUM(CASE WHEN t.COL_LOTW_QSL_RCVD = 'Y' THEN 1 ELSE 0 END) as LoTW_Received,
 				SUM(CASE WHEN t.COL_QRZCOM_QSO_UPLOAD_STATUS = 'Y' THEN 1 ELSE 0 END) as QRZ_Sent,
 				SUM(CASE WHEN t.COL_QRZCOM_QSO_DOWNLOAD_STATUS = 'Y' THEN 1 ELSE 0 END) as QRZ_Received,
+				SUM(CASE WHEN t.COL_CLUBLOG_QSO_UPLOAD_STATUS = 'Y' THEN 1 ELSE 0 END) as ClubLog_Sent,
+				SUM(CASE WHEN t.COL_CLUBLOG_QSO_DOWNLOAD_STATUS = 'Y' THEN 1 ELSE 0 END) as ClubLog_Received,
 				-- Today's stats (SUM - no filtering, all QSOs)
 				SUM(CASE WHEN t.COL_QSL_SENT = 'Y' AND t.COL_QSLSDATE >= " . $todayStartSql . " AND t.COL_QSLSDATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as QSL_Sent_today,
 				SUM(CASE WHEN t.COL_QSL_RCVD = 'Y' AND t.COL_QSLRDATE >= " . $todayStartSql . " AND t.COL_QSLRDATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as QSL_Received_today,
@@ -4303,7 +4362,9 @@ class Logbook_model extends CI_Model {
 				SUM(CASE WHEN t.COL_LOTW_QSL_SENT = 'Y' AND t.COL_LOTW_QSLSDATE >= " . $todayStartSql . " AND t.COL_LOTW_QSLSDATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as LoTW_Sent_today,
 				SUM(CASE WHEN t.COL_LOTW_QSL_RCVD = 'Y' AND t.COL_LOTW_QSLRDATE >= " . $todayStartSql . " AND t.COL_LOTW_QSLRDATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as LoTW_Received_today,
 				SUM(CASE WHEN t.COL_QRZCOM_QSO_UPLOAD_STATUS = 'Y' AND t.COL_QRZCOM_QSO_UPLOAD_DATE >= " . $todayStartSql . " AND t.COL_QRZCOM_QSO_UPLOAD_DATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as QRZ_Sent_today,
-				SUM(CASE WHEN t.COL_QRZCOM_QSO_DOWNLOAD_STATUS = 'Y' AND t.COL_QRZCOM_QSO_DOWNLOAD_DATE >= " . $todayStartSql . " AND t.COL_QRZCOM_QSO_DOWNLOAD_DATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as QRZ_Received_today
+				SUM(CASE WHEN t.COL_QRZCOM_QSO_DOWNLOAD_STATUS = 'Y' AND t.COL_QRZCOM_QSO_DOWNLOAD_DATE >= " . $todayStartSql . " AND t.COL_QRZCOM_QSO_DOWNLOAD_DATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as QRZ_Received_today,
+				SUM(CASE WHEN t.COL_CLUBLOG_QSO_UPLOAD_STATUS = 'Y' AND t.COL_CLUBLOG_QSO_UPLOAD_DATE >= " . $todayStartSql . " AND t.COL_CLUBLOG_QSO_UPLOAD_DATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as ClubLog_Sent_today,
+				SUM(CASE WHEN t.COL_CLUBLOG_QSO_DOWNLOAD_STATUS = 'Y' AND t.COL_CLUBLOG_QSO_DOWNLOAD_DATE >= " . $todayStartSql . " AND t.COL_CLUBLOG_QSO_DOWNLOAD_DATE < " . $tomorrowStartSql . " THEN 1 ELSE 0 END) as ClubLog_Received_today
 				FROM " . $this->config->item('table_name') . " t
 				LEFT JOIN dxcc_entities d ON d.adif = t.col_dxcc
 				WHERE t.station_id IN (" . $location_list . ")";
@@ -4329,6 +4390,8 @@ class Logbook_model extends CI_Model {
 					'LoTW_Received' => $row->LoTW_Received,
 					'QRZ_Sent' => $row->QRZ_Sent,
 					'QRZ_Received' => $row->QRZ_Received,
+					'ClubLog_Sent' => $row->ClubLog_Sent,
+					'ClubLog_Received' => $row->ClubLog_Received,
 					// Today's stats
 					'QSL_Sent_today' => $row->QSL_Sent_today,
 					'QSL_Received_today' => $row->QSL_Received_today,
@@ -4338,7 +4401,9 @@ class Logbook_model extends CI_Model {
 					'LoTW_Sent_today' => $row->LoTW_Sent_today,
 					'LoTW_Received_today' => $row->LoTW_Received_today,
 					'QRZ_Sent_today' => $row->QRZ_Sent_today,
-					'QRZ_Received_today' => $row->QRZ_Received_today
+					'QRZ_Received_today' => $row->QRZ_Received_today,
+					'ClubLog_Sent_today' => $row->ClubLog_Sent_today,
+					'ClubLog_Received_today' => $row->ClubLog_Received_today
 				];
 			}
 		}

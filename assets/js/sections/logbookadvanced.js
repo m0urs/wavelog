@@ -6,6 +6,7 @@ let inStateFixing = false;
 let stateFixStats = {fixed: 0, skipped: 0, fixedDxcc: new Set(), skippedDxcc: new Set(), skipReasons: new Set(), skippedDetails: []};
 let lastChecked = null;
 let silentReset = false;
+const filterDefaults = {};
 
 document.addEventListener("DOMContentLoaded", function() {
   document.querySelectorAll('.dropdown').forEach(dd => {
@@ -205,6 +206,10 @@ function loadQSOTable(rows) {
 
 	// Prevent initializing if already a DataTable
 	if ($.fn.DataTable.isDataTable($table)) {
+		// Remove ALL buttons containers to prevent duplicates
+		$('#qsoList').prev('.dt-buttons').remove();
+		$('#qsoList_wrapper').find('.dt-buttons').remove();
+		$('.dt-buttons').remove();
 		$table.DataTable().clear().destroy();
 	}
 
@@ -231,14 +236,15 @@ function loadQSOTable(rows) {
 				{ targets: $(".antennaelevation-column-sort").index(), type: "numbersort" },
 				{ targets: $(".stationpower-column-sort").index(), type: "numbersort" },
 			],
-			dom: 'Bfrtip',
+			dom: 'frtip',
 			buttons: [
 						{
 							extend: 'csv',
-							className: 'mb-1 btn btn-sm btn-primary', // Bootstrap classes
-								init: function(api, node, config) {
-									$(node).removeClass('dt-button').addClass('btn btn-primary'); // Ensure Bootstrap class applies
-								},
+							text: 'CSV',
+							className: 'mb-1 btn btn-sm btn-primary',
+							filename: function() {
+								return 'qso_export_' + new Date().toISOString().slice(0,10);
+							},
 								exportOptions: {
 								columns: ':visible:not(:eq(0))', // export all visible except column 4
 								format: {
@@ -251,7 +257,7 @@ function loadQSOTable(rows) {
 											data = data.replace(/<[^>]*>/g, '');
 										}
 										// then replace Ø with 0 in specific columns
-										if (column === 1 || column === 2 || column === 3) {
+										if (column === 1 || column === 2 || column === 3 || column === 4) {
 											// remove a trailing "L" and trim whitespaces
 											data = data.replace(/\s*L\s*$/, '').trim();
 											if (typeof data === 'string' && data.includes('Ø')) {
@@ -273,6 +279,9 @@ function loadQSOTable(rows) {
 						}
                     ]
 		});
+
+		// Place buttons in custom container
+		table.buttons().container().appendTo('#csv-button-container');
 
 	for (i = 0; i < rows.length; i++) {
 		let qso = rows[i];
@@ -626,7 +635,22 @@ function unselectQsoID(qsoID) {
 	$('#checkBoxAll').prop("checked", false);
 }
 
+// Capture default values for all filter fields on page load
+function captureFilterDefaults() {
+	$('.filter-field').each(function() {
+		const $el = $(this);
+		const id = $el.attr('id');
+		const name = $el.attr('name');
+		// Use id as key if available, otherwise use name
+		const key = id ? '#' + id : '[name="' + name + '"]';
+		filterDefaults[key] = $el.val();
+	});
+}
+
 $(document).ready(function () {
+	// Capture default filter values BEFORE any other initialization
+	captureFilterDefaults();
+
 	// initialize multiselect dropdown for locations
 	// Documentation: https://davidstutz.github.io/bootstrap-multiselect/index.html
 
@@ -646,7 +670,7 @@ $(document).ready(function () {
 	$('#dxcc').multiselect({
 		// template is needed for bs5 support
 		templates: {
-		  button: '<button type="button" class="multiselect dropdown-toggle btn btn-sm btn-secondary me-2 w-auto" data-bs-toggle="dropdown" aria-expanded="false"><span class="multiselect-selected-text"></span></button>',
+			button: '<button type="button" class="multiselect dropdown-toggle btn btn-sm btn-secondary me-2 w-auto" data-bs-toggle="dropdown" aria-expanded="false"><span class="multiselect-selected-text"></span></button>',
 		},
 		enableFiltering: true,
 		enableFullValueFiltering: false,
@@ -1409,6 +1433,133 @@ $(document).ready(function () {
 		});
 	});
 
+	// Merge QSOs button handler
+	$('#mergeQsos').click(function (event) {
+		const id_list = getSelectedIds();
+
+		if (id_list.length === 0 || id_list.length === 1 || id_list.length > 2) {
+			BootstrapDialog.alert({
+				title: lang_gen_advanced_logbook_info,
+				message: lang_gen_advanced_logbook_select_row_merge_qso,
+				type: BootstrapDialog.TYPE_INFO,
+				closable: false,
+				draggable: false,
+				callback: function (result) {
+				}
+			});
+			return;
+		}
+
+		// Load merge dialog
+		$.ajax({
+			url: base_url + 'index.php/logbookadvanced/mergeDialog',
+			type: 'post',
+			data: {
+				qsoIds: id_list
+			},
+			success: function (html) {
+				BootstrapDialog.show({
+					title: lang_gen_advanced_logbook_merge_qsos,
+					size: BootstrapDialog.SIZE_WIDE,
+					cssClass: 'merge-dialog',
+					nl2br: false,
+					message: html,
+					buttons: [
+					{
+						label: 'Merge QSOs <div class="ld ld-ring ld-spin"></div>',
+						cssClass: 'btn btn-sm btn-danger ld-ext-right',
+						id: 'mergeButton',
+						action: function (dialogItself) {
+							// Show confirmation dialog
+							BootstrapDialog.confirm({
+								title: lang_gen_advanced_logbook_danger,
+								message: lang_gen_advanced_logbook_confirm_merge_qsos,
+								type: BootstrapDialog.TYPE_DANGER,
+								closable: true,
+								draggable: true,
+								btnCancelLabel: lang_gen_advanced_logbook_cancel,
+								btnOKLabel: lang_gen_advanced_logbook_yes_merge_qsos,
+								btnOKClass: 'btn-danger',
+								callback: function(result) {
+									if (result) {
+										// User confirmed, proceed with merge
+										const formData = $('#mergeForm').serialize();
+
+										$('#mergeButton').prop("disabled", true).addClass("running");
+										$('#closeMergeButton').prop("disabled", true);
+
+										$.ajax({
+											url: base_url + 'index.php/logbookadvanced/mergeQsos',
+											type: 'post',
+											data: formData,
+											dataType: 'json',
+											success: function (response) {
+												dialogItself.close();
+												if (response.success) {
+													BootstrapDialog.alert({
+														title: lang_gen_advanced_logbook_success,
+														message: lang_gen_advanced_logbook_qsos_merged,
+														type: BootstrapDialog.TYPE_SUCCESS,
+														closable: false,
+														draggable: false,
+														callback: function (result) {
+															$('#searchButton').click();
+														}
+													});
+												} else {
+													BootstrapDialog.alert({
+														title: lang_gen_advanced_logbook_error,
+														message: response.message || lang_gen_advanced_logbook_error_merging_qsos,
+														type: BootstrapDialog.TYPE_DANGER,
+														closable: false,
+														draggable: false,
+														callback: function (result) {
+														}
+													});
+												}
+											},
+											error: function () {
+												dialogItself.close();
+												BootstrapDialog.alert({
+													title: lang_gen_advanced_logbook_error,
+													message: lang_gen_advanced_logbook_error_merging_qsos,
+													type: BootstrapDialog.TYPE_DANGER,
+													closable: false,
+													draggable: false,
+													callback: function (result) {
+													}
+												});
+											}
+										});
+									}
+								}
+							});
+						}
+					},
+					{
+						label: lang_admin_close,
+						cssClass: 'btn btn-sm btn-secondary',
+						id: 'closeMergeButton',
+						action: function (dialogItself) {
+							dialogItself.close();
+						}
+					}],
+				});
+			},
+			error: function () {
+				BootstrapDialog.alert({
+					title: lang_gen_advanced_logbook_error,
+					message: lang_gen_advanced_logbook_error_loading_merge_dialog,
+					type: BootstrapDialog.TYPE_DANGER,
+					closable: false,
+					draggable: false,
+					callback: function (result) {
+					}
+				});
+			}
+		});
+	});
+
 	function dupeSearchDialog() {
 		$.ajax({
 			url: base_url + 'index.php/logbookadvanced/dupeSearchDialog',
@@ -1513,85 +1664,96 @@ $(document).ready(function () {
 				case 'date': 		col1 = currentRow.find("td:eq(1)").text(); break;
 			}
 			if (col1.length == 0) return;
+
+			// Preserve selected locations before reset
+			const selectedLocations = $('#de').val();
+
 			silentReset = true;
 			$('#searchForm').trigger("reset");
+
+			// Restore selected locations after reset
+			if (selectedLocations && selectedLocations.length > 0) {
+				$("#de").multiselect('deselectAll');
+				$('#de').multiselect('select', selectedLocations);
+			}
 
 			if (type == 'date') {
 				let dateParts;
 				let formattedDate;
 
-			switch (custom_date_format) {
-				case "DD/MM/YY":
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${ensureFourDigitYear(dateParts[2])}-${dateParts[1]}-${dateParts[0]}`;
-					break;
+				switch (custom_date_format) {
+					case "DD/MM/YY":
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${ensureFourDigitYear(dateParts[2])}-${dateParts[1]}-${dateParts[0]}`;
+						break;
 
-				case "DD/MM/YYYY":
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-					break;
+					case "DD/MM/YYYY":
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+						break;
 
-				case "MM/DD/YY":
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${ensureFourDigitYear(dateParts[2])}-${dateParts[0]}-${dateParts[1]}`;
-					break;
+					case "MM/DD/YY":
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${ensureFourDigitYear(dateParts[2])}-${dateParts[0]}-${dateParts[1]}`;
+						break;
 
-				case "MM/DD/YYYY":
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`;
-					break;
+					case "MM/DD/YYYY":
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`;
+						break;
 
-				case "DD.MM.YYYY":
-					dateParts = col1.split(' ')[0].split('.');
-					formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-					break;
+					case "DD.MM.YYYY":
+						dateParts = col1.split(' ')[0].split('.');
+						formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+						break;
 
-				case "YY/MM/DD":
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${ensureFourDigitYear(dateParts[0])}-${dateParts[1]}-${dateParts[2]}`;
-					break;
+					case "YY/MM/DD":
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${ensureFourDigitYear(dateParts[0])}-${dateParts[1]}-${dateParts[2]}`;
+						break;
 
-				case "YYYY-MM-DD":
-					dateParts = col1.split(' ')[0].split('-');
-					formattedDate = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`;
-					break;
+					case "YYYY-MM-DD":
+						dateParts = col1.split(' ')[0].split('-');
+						formattedDate = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`;
+						break;
 
-				case "MMM DD, YY":
-				case "MMM DD, YYYY":
-					const monthNames = {
-						Jan: "01",
-						Feb: "02",
-						Mar: "03",
-						Apr: "04",
-						May: "05",
-						Jun: "06",
-						Jul: "07",
-						Aug: "08",
-						Sep: "09",
-						Oct: "10",
-						Nov: "11",
-						Dec: "12"
-					};
+					case "MMM DD, YY":
+					case "MMM DD, YYYY":
+						const monthNames = {
+							Jan: "01",
+							Feb: "02",
+							Mar: "03",
+							Apr: "04",
+							May: "05",
+							Jun: "06",
+							Jul: "07",
+							Aug: "08",
+							Sep: "09",
+							Oct: "10",
+							Nov: "11",
+							Dec: "12"
+						};
 
-					// Split by space and comma
-					const parts = col1.replace(',', '').split(' '); // Example: ["Dec", "03", "24"]
+						// Split by space and comma
+						const parts = col1.replace(',', '').split(' '); // Example: ["Dec", "03", "24"]
 
-					const month = monthNames[parts[0]]; // Convert month name to numeric format
-					const day = parts[1].padStart(2, '0'); // Ensure day has leading zero
-					const year = ensureFourDigitYear(parts[2]); // Ensure 4-digit year
+						const month = monthNames[parts[0]]; // Convert month name to numeric format
+						const day = parts[1].padStart(2, '0'); // Ensure day has leading zero
+						const year = ensureFourDigitYear(parts[2]); // Ensure 4-digit year
 
-					formattedDate = `${year}-${month}-${day}`; // Convert to 'YYYY-MM-DD'
-					break;
+						formattedDate = `${year}-${month}-${day}`; // Convert to 'YYYY-MM-DD'
+						break;
 
-				default:
-					dateParts = col1.split(' ')[0].split('/');
-					formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-			}
+					default:
+						dateParts = col1.split(' ')[0].split('/');
+						formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+				}
 				$("#dateFrom").val(formattedDate);
 				$("#dateTo").val(formattedDate);
 			} else {
 				$("#"+type).val(col1);
 			}
+			updateFilterButtonStates();
 			$('#searchForm').submit();
 		});
 	}
@@ -1662,17 +1824,64 @@ $(document).ready(function () {
 		if (silentReset) {
     	    silentReset = false; // reset flag
         	return; // skip submit
-    	}
+		}
+
+		// Preserve selected locations during normal reset
+		const selectedLocations = $('#de').val();
+
+		requestAnimationFrame(function() {
+			// Restore locations after reset
+			if (selectedLocations && selectedLocations.length > 0) {
+				$("#de").multiselect('deselectAll');
+				$('#de').multiselect('select', selectedLocations);
+			}
+			updateFilterButtonStates();
+		});
 		setTimeout(function() {
 			$('#searchForm').submit();
 		});
+	});
+
+	$('#searchForm').on('change', 'input, select', function() {
+		updateFilterButtonStates();
 	});
 
 	rebind_checkbox_trigger();
 
 	$('#searchForm').submit();
 
+	setTimeout(function() {
+		updateFilterButtonStates();
+	}, 100);
+
 });
+
+function hasActiveFilters() {
+	return Object.keys(filterDefaults).some(selector => {
+		const $el = $(selector);
+		if (!$el.length) return false;
+		const currentVal = $el.val();
+		const defaultVal = filterDefaults[selector];
+
+		// Handle arrays (multi-select)
+		if (Array.isArray(currentVal)) {
+			return false; // Multi-selects not currently used
+		}
+
+		// Compare current value to stored default
+		return currentVal !== defaultVal;
+	});
+}
+
+function updateFilterButtonStates() {
+	const hasActive = hasActiveFilters();
+
+	if (hasActive) {
+		$('#filterDropdown').addClass('btn-filter-active');
+	} else {
+		$('#filterDropdown').removeClass('btn-filter-active');
+	}
+}
 
 function rebind_checkbox_trigger() {
 	$('#checkBoxAll').change(function (event) {
@@ -1929,28 +2138,28 @@ function saveOptions() {
                 break;
 
             case 'thismonth':
-                const firstDayOfMonth = new Date(today.getUTCFullYear(), today.getUTCMonth(), 1);
+                const firstDayOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
                 dateFrom.value = formatDate(firstDayOfMonth);
                 dateTo.value = formatDate(today);
                 break;
 
             case 'lastmonth':
-                const firstDayOfLastMonth = new Date(today.getUTCFullYear(), today.getUTCMonth() - 1, 1);
-                const lastDayOfLastMonth = new Date(today.getUTCFullYear(), today.getUTCMonth(), 0);
+                const firstDayOfLastMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+                const lastDayOfLastMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0));
                 dateFrom.value = formatDate(firstDayOfLastMonth);
                 dateTo.value = formatDate(lastDayOfLastMonth);
                 break;
 
             case 'thisyear':
-                const firstDayOfYear = new Date(today.getUTCFullYear(), 0, 1);
+                const firstDayOfYear = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
                 dateFrom.value = formatDate(firstDayOfYear);
                 dateTo.value = formatDate(today);
                 break;
 
             case 'lastyear':
                 const lastYear = today.getUTCFullYear() - 1;
-                const firstDayOfLastYear = new Date(lastYear, 0, 1);
-                const lastDayOfLastYear = new Date(lastYear, 11, 31);
+                const firstDayOfLastYear = new Date(Date.UTC(lastYear, 0, 1));
+                const lastDayOfLastYear = new Date(Date.UTC(lastYear, 11, 31));
                 dateFrom.value = formatDate(firstDayOfLastYear);
                 dateTo.value = formatDate(lastDayOfLastYear);
                 break;
@@ -1960,6 +2169,7 @@ function saveOptions() {
                 dateTo.value = '';
                 break;
         }
+        updateFilterButtonStates();
     }
 
     // Reset dates function
@@ -1968,6 +2178,7 @@ function saveOptions() {
         const dateTo = document.getElementById('dateTo');
         dateFrom.value = '';
         dateTo.value = '';
+        updateFilterButtonStates();
     }
 
 	function checkUpdateDistances() {
@@ -3140,4 +3351,31 @@ function saveOptions() {
 		} else {
 			window.map.setView([30, 0], 1.5);
 		}
+	}
+
+	function selectAllQso1Fields() {
+		$('#primaryQso').val($('input[name="primaryQsoRadio"]:checked').val());
+		$('#mergeForm input[type="radio"][name="secondaryQsoRadio"]').prop('checked', false);
+		$('#mergeForm input[type="radio"][name^="mergeData"]').prop('checked', false);
+		$('#mergeForm input[type="radio"][name^="mergeData"][value="qso1"]').prop('checked', true);
+	}
+
+	function selectAllQso2Fields() {
+		$('#primaryQso').val($('input[name="secondaryQsoRadio"]:checked').val());
+		$('#mergeForm input[type="radio"][name="primaryQsoRadio"]').prop('checked', false);
+		$('#mergeForm input[type="radio"][name^="mergeData"]').prop('checked', false);
+		$('#mergeForm input[type="radio"][name^="mergeData"][value="qso2"]').prop('checked', true);
+	}
+
+	function getQsos(id) {
+		$.ajax({
+			url: base_url + 'index.php/logbookadvanced/getQsos',
+			type: 'post',
+			data: {
+				id: id
+			},
+			success: function (data) {
+				updateRow(data);
+			}
+		});
 	}

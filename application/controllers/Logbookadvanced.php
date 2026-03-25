@@ -755,6 +755,51 @@ class Logbookadvanced extends CI_Controller {
 		$this->load->view('logbookadvanced/distancedialog');
 	}
 
+	public function mergeDialog() {
+		if(!clubaccess_check(9)) return;
+
+		$qsoIds = $this->input->post('qsoIds', true);
+		if (!is_array($qsoIds) || count($qsoIds) !== 2) {
+			show_error('Invalid QSO IDs');
+		}
+
+		$this->load->model('logbookadvanced_model');
+
+		// Get both QSOs
+		$qso1 = $this->logbookadvanced_model->getQsoForMerge($qsoIds[0]);
+		$qso2 = $this->logbookadvanced_model->getQsoForMerge($qsoIds[1]);
+
+		if (!$qso1 || !$qso2) {
+			show_error('QSO not found');
+		}
+
+		$data['qso1'] = $qso1;
+		$data['qso2'] = $qso2;
+		$data['qsoIds'] = $qsoIds;
+
+		$this->load->view('logbookadvanced/mergedialog', $data);
+	}
+
+	public function mergeQsos() {
+		if(!clubaccess_check(9)) return;
+
+		$qsoIds = $this->input->post('qsoIds', true);
+		$mergeData = $this->input->post('mergeData', true);
+
+		if (!is_array($qsoIds) || count($qsoIds) !== 2) {
+			header("Content-Type: application/json");
+			echo json_encode(['success' => false, 'message' => 'Invalid QSO IDs']);
+			return;
+		}
+
+		$this->load->model('logbookadvanced_model');
+
+		$result = $this->logbookadvanced_model->mergeQsos($qsoIds[0], $qsoIds[1], $mergeData);
+
+		header("Content-Type: application/json");
+		echo json_encode($result);
+	}
+
 	public function fixCqZones() {
 		if(!clubaccess_check(9)) return;
 
@@ -952,6 +997,28 @@ class Logbookadvanced extends CI_Controller {
 
 		header("Content-Type: application/json");
 		print json_encode($data);
+	}
+
+	function getQsos() {
+		if(!clubaccess_check(9)) return;
+
+		$qsoID[] = $this->input->post('id', true);
+
+		$this->load->model('logbookadvanced_model');
+		$qso = $this->logbookadvanced_model->getQsosForAdif(json_encode($qsoID), $this->session->userdata('user_id'))->row_array();
+
+		$qsoObj = new QSO($qso);		// Redirection via Object to clean/convert QSO (get rid of cols)
+		$cleaned_qso = $qsoObj->toArray();	// And back to Array for the JSON
+
+		$flag = $this->dxccflag->get($qsoObj->getDXCCId());
+		if ($flag != null) {
+			$cleaned_qso['flag'] = ' ' . $flag;
+		} else {
+			$cleaned_qso['flag'] = '';
+		}
+
+		header("Content-Type: application/json");
+		echo json_encode($cleaned_qso);
 	}
 
 }
