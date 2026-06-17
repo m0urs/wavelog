@@ -215,17 +215,6 @@ $config['charset'] = 'UTF-8';
 
 /*
 |--------------------------------------------------------------------------
-| Enable/Disable System Hooks
-|--------------------------------------------------------------------------
-|
-| If you would like to use the 'hooks' feature you must enable it by
-| setting this variable to TRUE (boolean).  See the user guide for details.
-|
-*/
-$config['enable_hooks'] = TRUE;
-
-/*
-|--------------------------------------------------------------------------
 | Class Extension Prefix
 |--------------------------------------------------------------------------
 |
@@ -808,38 +797,6 @@ $config['cron_allow_insecure'] = false;
  */
 
 $config['disable_version_check'] = false;
-
-/*
-|--------------------------------------------------------------------------
-| trx-control Configuration
-|--------------------------------------------------------------------------
-|
-| ***
-| No Features implemented yet, Nothing is going to happen if you set this.
-| ***
-|
-| This defines server and port of your personal trx-control server.
-| If you don't have a trx-control server, you can ignore this.
-|
-| trxd_server_ip            IP of your trx-control server
-| trxd_server_port          Port of your trx-control server
-| trxd_connection_type      Connection type of your trx-control server (ws, wss or plain)
-|                           ws:     normal websocket
-|                           wss:    secure websocket (requires a valid certificate on trx-control server)
-|                           plain:  plain tcp/ip socket connection
-| trxd_ws_path              Path of your trxd websocket server (only required for ws and wss)
-| trxd_server_timeout       Timeout before the connection to trx-control server is closed
-|
-| More Information about trx-control you can find here:
-| https://github.com/hb9ssb/trx-control
-|
-|*/
-
-// $config['trxd_server_ip'] = '10.0.0.10';
-// $config['trxd_server_port'] = '14290';
-// $config['trxd_connection_type'] = 'ws';
-// $config['trxd_ws_path'] = '/trx-control';
-// $config['trxd_timeout'] = 5;
 
 /*
 |--------------------------------------------------------------------------

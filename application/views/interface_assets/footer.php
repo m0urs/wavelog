@@ -340,6 +340,10 @@ function stopImpersonate_modal() {
     <script id="waejs" type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/sections/wae.js'); ?>"></script>
 <?php } ?>
 
+<?php if ($this->uri->segment(1) == "awards" && ($this->uri->segment(2) == "amsat_rover") ) { ?>
+    <script type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/sections/amsat_award.js'); ?>"></script>
+<?php } ?>
+
 <?php if ($this->uri->segment(1) == "statistics" && $this->uri->segment(2) == "") { ?>
     <script type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/chart.js'); ?>"></script>
     <script type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/chartjs-plugin-piechart-outlabels.js'); ?>"></script>
@@ -1305,7 +1309,7 @@ mymap.on('mousemove', onQsoMapMove);
   </script>
 
 <?php } ?>
-<?php if ( $this->uri->segment(1) == "qso" || ($this->uri->segment(1) == "contesting" && $this->uri->segment(2) != "add")) { ?>
+<?php if ( $this->uri->segment(1) == "qso") { ?>
 	<!--- Frequency input functionality --->
     <script type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/sections/qrg_handler.js'); ?>"></script>
     <script type="text/javascript" src="<?php echo $this->paths->cache_buster('/assets/js/moment.min.js'); ?>"></script>
@@ -1716,7 +1720,7 @@ $(document).ready(function(){
     $('.tabledxcc').DataTable({
         "pageLength": 25,
         responsive: false,
-        ordering: false,
+        ordering: true,
         "scrollY":        "400px",
         "scrollCollapse": true,
         "paging":         false,
@@ -2371,7 +2375,7 @@ $('#sats').change(function(){
 <script>
 function viewQsl(picture, callsign) {
 
-            var webpath_qsl = "<?php echo $this->paths->getPathQsl(); ?>";
+            var webpath_qsl = "<?php echo method_exists($this->paths, 'getUserdataPath') ? $this->paths->getUserdataPath('qsl_card') : $this->paths->getPathQsl(); ?>";
             var textAndPic = $('<div class="text-center"></div>');
                 textAndPic.append('<img class="img-fluid w-qsl" style="height:auto;width:auto;"src="'+base_url+webpath_qsl+'/'+picture+'" />');
             var title = '';
@@ -2432,7 +2436,7 @@ function deleteQsl(id) {
 </script>
 <script>
 function viewEqsl(picture, callsign) {
-            var webpath_eqsl = '<?php echo $this->paths->getPathEqsl(); ?>';
+            var webpath_eqsl = '<?php echo method_exists($this->paths, 'getUserdataPath') ? $this->paths->getUserdataPath('eqsl_card') : $this->paths->getPathEqsl(); ?>';
             var baseURL= "<?php echo base_url(); ?>";
             var $textAndPic = $('<div></div>');
                 $textAndPic.append('<img class="img-fluid" style="height:auto;width:auto;"src="'+baseURL+webpath_eqsl+'/'+picture+'" />');
@@ -2626,7 +2630,7 @@ function viewEqsl(picture, callsign) {
     }
 
     function uploadQsl() {
-        var webpath_qsl = "<?php echo $this->paths->getPathQsl(); ?>";
+        var webpath_qsl = "<?php echo method_exists($this->paths, 'getUserdataPath') ? $this->paths->getUserdataPath('qsl_card') : $this->paths->getPathQsl(); ?>";
         var formdata = new FormData(document.getElementById("fileinfo"));
 
         $.ajax({
@@ -2671,9 +2675,7 @@ function viewEqsl(picture, callsign) {
                     }
 
                 } else if (data.status.front.status != '') {
-                    $("#qslupload").append('<div class="alert alert-danger">'+"<?= __("Front QSL Card:"); ?>  " +
-                    data.status.front.error +
-                        '</div>');
+                    showToast("<?= __("Front QSL Card"); ?>", data.status.front.error, 'bg-danger text-white', 5000);
                 }
                 if (data.status.back.status == 'Success') {
                     var qsoid = $("#qsoid").text();
@@ -2709,10 +2711,11 @@ function viewEqsl(picture, callsign) {
                         $("#qslcardback").val(null);
                     }
                 } else if (data.status.back.status != '') {
-                    $("#qslupload").append('<div class="alert alert-danger">\n'+"<?= __("Back QSL Card:"); ?>  " +
-                    data.status.back.error +
-                        '</div>');
+                    showToast("<?= __("Back QSL Card"); ?>", data.status.back.error, 'bg-danger text-white', 5000);
                 }
+            },
+            error: function () {
+                showToast("<?= __("Upload failed"); ?>", "<?= __("The QSL card upload could not be completed."); ?>", 'bg-danger text-white', 5000);
             }
         });
     }
@@ -2763,11 +2766,6 @@ function viewEqsl(picture, callsign) {
 	}
 
 </script>
-<?php if ($this->uri->segment(1) == "contesting" && ($this->uri->segment(2) != "add" && $this->uri->segment(2) != "edit")) { ?>
-    <script>
-        var manual = <?php echo $manual_mode; ?>;
-    </script>
-<?php } ?>
 
 <?php if ($this->uri->segment(2) == "counties" || $this->uri->segment(2) == "counties_details") { ?>
 <script>
@@ -2858,10 +2856,6 @@ function viewEqsl(picture, callsign) {
 			$(".buttons-csv").css("color", "white");
 		}
 	</script>
-<?php } ?>
-
-<?php if ($this->uri->segment(1) == "contesting" && $this->uri->segment(2) == "add") { ?>
-	<script src="<?php echo $this->paths->cache_buster('/assets/js/sections/contestingnames.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($this->uri->segment(1) == "themes") { ?>
