@@ -827,7 +827,7 @@ function spawnActivatorsMap(call, count, grids) {
 				nl2br: false,
 				message: html,
 				onshown: function(dialog) {
-					showActivatorsMap(call, count, grids);
+					showActivatorsMap(call, count, grids, grid_color);
 				},
 				buttons: [{
 					label: lang_admin_close,
@@ -1208,6 +1208,29 @@ function set_active_loc_quickswitcher(new_active) {
                 console.error('Error while setting the new active location: ' + error);
             }
         });
+    });
+}
+
+// Quick theme switcher — POST the chosen theme folder to the user controller,
+// then reload the page so the new stylesheet and logos take effect.
+function quick_switch_theme(foldername) {
+    $.ajax({
+        url: base_url + 'index.php/user/theme_switch',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            theme: foldername
+        },
+        success: function(response) {
+            if (response && response.status === 'success') {
+                window.location.reload();
+            } else {
+                console.error('Theme switch failed: ' + ((response && response.message) ? response.message : 'unknown error'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error while switching theme: ' + error);
+        }
     });
 }
 

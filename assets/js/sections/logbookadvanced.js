@@ -819,7 +819,7 @@ $(document).ready(function () {
 				$('#searchButton').prop("disabled", false).removeClass("running");
 				BootstrapDialog.alert({
 					title: lang_gen_advanced_logbook_error,
-					message: lang_gen_advanced_logbook_an_error_ocurred_while_making_request,
+					message: lang_gen_advanced_logbook_an_error_occurred_while_making_request,
 					type: BootstrapDialog.TYPE_DANGER,
 					closable: false,
 					draggable: false,
@@ -980,13 +980,24 @@ $(document).ready(function () {
 							'ids': JSON.stringify(id_list, null, 2)
 						},
 						success: function(data) {
-							id_list.forEach(function(id) {
+							var deleted = (data && data.deleted) ? data.deleted : id_list;
+							deleted.forEach(function(id) {
 								let row = $("#qsoID-" + id);
 								table.row(row).remove();
 							});
 							$('#deleteQsos').prop("disabled", false);
 							table.draw(false);
 							$('#checkBoxAll').prop("checked", false);
+
+							var requested = (data && data.requested) ? data.requested : id_list.length;
+							var skipped = requested - deleted.length;
+							if (skipped > 0) {
+								BootstrapDialog.alert({
+									title: lang_gen_advanced_logbook_warning,
+									message: lang_lba_delete_skipped.replace('%d', skipped).replace('%d', requested),
+									type: BootstrapDialog.TYPE_WARNING,
+								});
+							}
 						}
 					})
 				}
@@ -2102,10 +2113,22 @@ $(document).ready(function () {
 								return;
 							}
 							var $form = $('#printQslCardForm');
-							$form.attr('action', base_url + 'index.php/qslpostcard/pdfselected/' + tplId);
-							$form[0].submit();
-							dialog.close();
-						});
+						$form.attr('action', base_url + 'index.php/qslpostcard/pdfselected/' + tplId);
+						$form.attr('target', '_blank');
+						$form[0].submit();
+						dialog.close();
+					});
+					$('#btnPrintQslCardSave').off('click').on('click', function () {
+						var tplId = $('#qslcard_template_id').val();
+						if (!tplId) {
+							return;
+						}
+						var $form = $('#printQslCardForm');
+						$form.attr('action', base_url + 'index.php/qslpostcard/pdfselected/' + tplId + '?download=1');
+						$form.attr('target', '_blank');
+						$form[0].submit();
+						dialog.close();
+					});
 					},
 					buttons: [{
 						label: lang_admin_close,

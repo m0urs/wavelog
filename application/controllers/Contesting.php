@@ -91,7 +91,7 @@ class Contesting extends CI_Controller {
 	public function quickstart() {
 		if (!clubaccess_check(9)) {
 			$this->session->set_flashdata('error', __("Officers must set up contests."));
-			redirect('contesting'); 
+			redirect('contesting');
 		}
 
 		$this->load->is_loaded('contesting_model') ?: $this->load->model('contesting_model');
@@ -322,7 +322,7 @@ class Contesting extends CI_Controller {
 	 * POST /contesting/export_reg1test/<id>
 	 */
 	public function export_reg1test($contest_session_id) {
-		
+
 		//load contesting model
 		$this->load->is_loaded('contesting_model') ?: $this->load->model('contesting_model');
 
@@ -454,6 +454,18 @@ class Contesting extends CI_Controller {
 			redirect('contesting');
 		}
 
+		// Security Check: Ensure the user is authorized for this contest session
+		$source_uid = $this->session->userdata('source_uid') ?: $this->session->userdata('user_id');
+		if ($decoded_token['user_id'] != $source_uid) {
+			$this->session->set_flashdata('error', __("You are not authorized to access this contest session."));
+			redirect('contesting');
+		}
+
+		if (!$this->contesting_model->check_user_contest($decoded_token['contest_session_id'])) {
+			$this->session->set_flashdata('error', __("You are not authorized to access this contest session."));
+			redirect('contesting');
+		}
+
 		// setting up worker if available
 		$worker_topic = 'contest_session.' . $decoded_token['contest_session_id']; // shared topic for all operators in this contest session
 		if ($this->worker_available) {
@@ -491,11 +503,20 @@ class Contesting extends CI_Controller {
 		// Generate storage key for localStorage. This needs to be collision-free between different Wavelog Instances and different users
 		$data['storage_key'] = md5($this->config->item('base_url') . $contest_session_id . $this->session->userdata('user_id'));
 
-		$data['operator'] = $this->user_model->get_by_id($decoded_token['user_id'])->row()->user_callsign;
+		$data['operator'] = strtoupper(trim($this->session->userdata('operator_callsign') ?: $this->session->userdata('user_callsign')));
 		$data['page_title'] = !empty($data['session_info']['custom_name'])
 			? $data['session_info']['custom_name']
 			: $data['session_info']['contest_name'];
 		$data['is_club_station'] = (bool) ($this->session->userdata('clubstation') ?? false);
+		$data['switch_operator_mode'] = null;
+		if ($data['is_club_station'] && !($this->config->item('disable_switch_operator') ?? false)) {
+			if (empty($this->session->userdata('source_uid'))) {
+				$data['switch_operator_mode'] = 'callsign';
+			} elseif (!$this->config->item('disable_impersonate')) {
+				$data['switch_operator_mode'] = 'login';
+			}
+		}
+		$data['club_callsign'] = $this->session->userdata('user_callsign');
 
 		// Load available radios for CAT control
 		$this->load->model('cat');
@@ -574,6 +595,9 @@ class Contesting extends CI_Controller {
 		];
 
 		if ($this->session->userdata('isWinkeyEnabled')) {
+			// Winkeyer sits at the bottom right (y=63). Shrink the SCP component
+			// above it so both fit stacked without the winkeyer overlapping the SCP.
+			$data['components']['scp']['height'] = 30; // 32% + 30% = 62%, leaving a 1% gap before the winkeyer at y=63
 			$data['components']['winkeyer'] = [
 				'x'      => 73,
 				'y'      => 63,
@@ -595,7 +619,11 @@ class Contesting extends CI_Controller {
 				$this->load->is_loaded('stations') ?: $this->load->model('stations');
 
 				$data['available_contests'] = $this->contest_admin_model->getActiveContests();
-				$data['stations'] = $this->stations->all_of_user();
+				if (!empty($this->session->userdata('user_stations_active_log_only'))) {
+					$data['stations'] = $this->logbooks_model->list_logbooks_linked($this->session->userdata('active_station_logbook'));
+				} else {
+					$data['stations'] = $this->stations->all_of_user();
+				}
 				$data['active_station_location'] = $this->active_station_location;
 
 				$this->load->view('contesting/manager/components/session_modal', $data);
@@ -604,7 +632,7 @@ class Contesting extends CI_Controller {
 			case 'post':
 				if (!clubaccess_check(9)) {
 					$this->session->set_flashdata('error', __("Officers must set up contests."));
-					redirect('contesting'); 
+					redirect('contesting');
 				}
 				$contest_adif_id = $this->input->post('contest_adif_id', true);
 				$session_start = $this->input->post('session_start', true);
@@ -639,7 +667,7 @@ class Contesting extends CI_Controller {
 		switch ($this->input->method()) {
 			case 'get':
 				$contest_session_id = $this->input->get('contest_session_id');
-				
+
 				$this->load->is_loaded('contest_admin_model') ?: $this->load->model('contest_admin_model');
 				$this->load->is_loaded('stations') ?: $this->load->model('stations');
 
@@ -695,7 +723,7 @@ class Contesting extends CI_Controller {
 		switch ($this->input->method()) {
 			case 'get':
 				$contest_session_id = $this->input->get('contest_session_id');
-				
+
 				$this->load->is_loaded('contest_admin_model') ?: $this->load->model('contest_admin_model');
 				$this->load->is_loaded('stations') ?: $this->load->model('stations');
 
@@ -706,11 +734,15 @@ class Contesting extends CI_Controller {
 				}
 
 				$data['available_contests'] = $this->contest_admin_model->getActiveContests();
-				$data['stations'] = $this->stations->all_of_user();
+				if (!empty($this->session->userdata('user_stations_active_log_only'))) {
+					$data['stations'] = $this->logbooks_model->list_logbooks_linked($this->session->userdata('active_station_logbook'));
+				} else {
+					$data['stations'] = $this->stations->all_of_user();
+				}
 				$data['active_station_location'] = $this->active_station_location;
 
 				$this->load->view('contesting/manager/components/confirm_delete', $data);
-				break;	
+				break;
 
 			case 'post':
 				$contest_session_id = $this->input->post('contest_session_id', true);
@@ -811,13 +843,17 @@ class Contesting extends CI_Controller {
 			foreach ($allowed as $key => $col) {
 				if (array_key_exists($key, $payload)) {
 					$val = $payload[$key];
-					if (in_array($key, ['callsign', 'mode', 'band', 'rst_sent', 'rst_rcvd',
+					if (in_array($key, ['callsign', 'mode', 'rst_sent', 'rst_rcvd',
 					                    'serial_sent', 'serial_rcvd', 'exchange_sent',
 					                    'exchange_rcvd', 'gridsquare_rcvd'])) {
 						$val = $val !== null ? strtoupper(trim((string)$val)) : null;
 						if ($key === 'callsign' && $val !== null) {
 							$val = $this->_validateCallsign($val);
 						}
+					}
+					// Bands are stored lowercase (e.g. 20m, 70cm)
+					if ($key === 'band') {
+						$val = $val !== null ? strtolower(trim((string)$val)) : null;
 					}
 					if (in_array($key, ['serial_sent', 'serial_rcvd']) && $val === '') {
 						$val = null;
@@ -918,6 +954,115 @@ class Contesting extends CI_Controller {
 	}
 
 	/**
+	 * Switch the operating user mid-session in a club station.
+	 */
+	public function switch_operator() {
+		if ($this->input->method() !== 'post') {
+			$this->_teapot();
+			return;
+		}
+
+		header('Content-Type: application/json');
+
+		try {
+			if (!$this->config->item('special_callsign') || $this->config->item('disable_impersonate')) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => __("Operator switching is disabled.")]);
+				return;
+			}
+
+			$payload = json_decode($this->input->raw_input_stream, true);
+			if (!$payload) {
+				throw new Exception('Invalid JSON payload');
+			}
+
+			$contest_session_id = (int)($payload['contest_session_id'] ?? 0);
+			$user_name          = trim((string)($payload['user_name'] ?? ''));
+			$user_password      = (string)($payload['user_password'] ?? '');
+
+			if (!$contest_session_id || $user_name === '' || $user_password === '') {
+				throw new Exception('Missing required fields');
+			}
+
+			// Only valid inside a club station.
+			if ((int)$this->session->userdata('clubstation') !== 1) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => __("Operator switching is only available in club stations.")]);
+				return;
+			}
+
+			$club_id = (int)$this->session->userdata('user_id');
+
+			// The club must own this contest session.
+			$this->load->model('contesting_model');
+			if (!$this->contesting_model->check_user_contest($contest_session_id)) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => __("Access denied")]);
+				return;
+			}
+
+			// Re-authenticate the new operator. Reuses bcrypt verification and the
+			// login_attempts lockout. Returns 1 on success; 0/2/3 are all failures here.
+			if ($this->user_model->authenticate($user_name, $user_password) !== 1) {
+				http_response_code(401);
+				echo json_encode(['success' => false, 'error' => __("Incorrect username or password!")]);
+				return;
+			}
+			$op = $this->user_model->get($user_name)->row();
+
+			// A club account must never act as an operator. authenticate() lets club
+			// accounts through when club_direct is enabled, so reject them explicitly.
+			if ((int)$op->clubstation !== 0) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => __("A club account cannot be used as an operator.")]);
+				return;
+			}
+
+			// The operator must be an authorised member (p_level >= 3) of THIS club.
+			// get_permission_noui() is the redirect-free getter (club_authorize() would
+			// redirect on failure, which breaks a JSON endpoint).
+			$this->load->model('club_model');
+			$p_level = (int)$this->club_model->get_permission_noui($club_id, $op->user_id);
+			if ($p_level < 3) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => __("You're not allowed to do that!")]);
+				return;
+			}
+
+			// Establish the impersonation session for the new operator (same primitives
+			// as User::impersonate()). user_id stays the club.
+			// Create a fresh impersonation hash so the operator can still use "Switch back"
+			// to return to their own account. Format must match stop_impersonate()'s
+			// validation (User.php): source_uid/target_uid/timestamp — source is this
+			// operator, target is the club (which stays as user_id).
+			if (!$this->load->is_loaded('encryption')) {
+				$this->load->library('encryption');
+			}
+			$custom = [
+				'p_level'       => $p_level,
+				'src_call'      => $op->user_callsign,
+				'src_user_type' => $op->user_type,
+				'src_hash'      => $this->encryption->encrypt($op->user_id . '/' . $club_id . '/' . time()),
+			];
+			$this->session->set_userdata('source_uid', $op->user_id);
+			$this->user_model->update_session($club_id, null, true, $custom);
+			// update_session keeps an existing operator_callsign, so override it explicitly.
+			$this->session->set_userdata('operator_callsign', strtoupper(trim($op->user_callsign)));
+
+			// Fresh token now carries the new operator as token user_id (reads source_uid).
+			$token = $this->paths->create_contesting_logging_token($contest_session_id);
+
+			echo json_encode([
+				'success'  => true,
+				'redirect' => site_url('contesting/logging_engine') . '/' . $token,
+			]);
+		} catch (Exception $e) {
+			http_response_code(400);
+			echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+		}
+	}
+
+	/**
 	 * Sync Endpoint for Contest Engine
 	 * Handles bidirectional communication (Commands + Requests)
 	 * Endpoint: POST /contesting/heartbeat
@@ -941,12 +1086,23 @@ class Contesting extends CI_Controller {
 				throw new Exception('Invalid JSON payload');
 			}
 
-			$session_info = $payload['session_info'] ?? null;
-			if (!$session_info) {
+			$session_id = (int)($payload['session_info']['contest_session_id'] ?? 0);
+			if (!$session_id) {
 				throw new Exception('Missing contest_session_id');
 			}
-				
+
 			$this->load->model('contesting_model');
+
+			if (!$this->contesting_model->check_user_contest($session_id)) {
+				http_response_code(403);
+				echo json_encode(['success' => false, 'error' => 'Access denied']);
+				return;
+			}
+
+			$session_info = $this->contesting_model->get_session_info($session_id);
+			if (!$session_info) {
+				throw new Exception('Contest session not found');
+			}
 
 			$response = [
 				'success' => true,
@@ -1040,7 +1196,7 @@ class Contesting extends CI_Controller {
 					'continent' => $command['data']['continent'] ?? NULL,
 					'dxcc_id' => $command['data']['dxcc_id'] ?? NULL,
 					'cqz' => $command['data']['cqz'] ?? NULL,
-					'operator_callsign' => $command['data']['operator'] ?: $this->session->userdata('user_callsign'),
+					'operator_callsign' => strtoupper(trim($this->session->userdata('operator_callsign') ?: $this->session->userdata('user_callsign'))),
 					'contestname' => $session_info['contest_adifname'],
 					'exchangetype' => $session_info['exchangetype'] ?? 'Exchange',
 					'copyexchangeto' => $session_info['copyexchangeto'] ?? NULL

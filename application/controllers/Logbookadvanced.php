@@ -60,7 +60,11 @@ class Logbookadvanced extends CI_Controller {
 		$pageData['iotaarray'] = $this->logbook_model->fetchIota();
 		$pageData['sats'] = $this->logbookadvanced_model->get_worked_sats();
 		$pageData['orbits'] = $this->bands->get_worked_orbits();
-		$pageData['station_profile'] = $this->stations->all_of_user();
+		if (!empty($this->session->userdata('user_stations_active_log_only'))) {
+			$pageData['station_profile'] = $this->logbooks_model->list_logbooks_linked($this->session->userdata('active_station_logbook'));
+		} else {
+			$pageData['station_profile'] = $this->stations->all_of_user();
+		}
 		$pageData['active_station_info'] = $station_profile->row();
 		$pageData['homegrid'] = explode(',', $this->stations->find_gridsquare());
 		$pageData['active_station_id'] = $active_station_id;
@@ -641,7 +645,7 @@ class Logbookadvanced extends CI_Controller {
 	}
 
 	public function editDialog() {
-		if(!clubaccess_check(9)) return;
+		if(!clubaccess_check(3)) return;
 
 		$this->load->model('bands');
 		$this->load->model('modes');
@@ -657,7 +661,7 @@ class Logbookadvanced extends CI_Controller {
 	}
 
 	public function saveBatchEditQsos() {
-		if(!clubaccess_check(9)) return;
+		if(!clubaccess_check(3)) return;
 
 		$ids = xss_clean($this->input->post('ids'));
 		$column = xss_clean($this->input->post('column'));
@@ -665,6 +669,15 @@ class Logbookadvanced extends CI_Controller {
 		$value2 = xss_clean($this->input->post('value2'));
 		$value3 = xss_clean($this->input->post('value3'));
 		$value4 = xss_clean($this->input->post('value4'));
+
+		// Club Member may only edit QSOs he made himself; officers and normal users are unaffected 
+		$ids_array = clubaccess_filter_qso_ids(json_decode($ids, true) ?? []);
+		if (empty($ids_array)) {
+			header("Content-Type: application/json");
+			print json_encode([]);
+			return;
+		}
+		$ids = json_encode($ids_array);
 
 		$this->load->model('logbookadvanced_model');
 		$this->logbookadvanced_model->saveEditedQsos($ids, $column, $value, $value2, $value3, $value4);
@@ -704,12 +717,23 @@ class Logbookadvanced extends CI_Controller {
 	}
 
 	public function batchDeleteQsos() {
-		if(!clubaccess_check(9)) return;
+		if(!clubaccess_check(3)) return;
 
 		$ids = xss_clean($this->input->post('ids'));
 
-		$this->load->model('logbookadvanced_model');
-		$this->logbookadvanced_model->deleteQsos($ids);
+		$requested_ids = json_decode($ids, true) ?? [];
+		// Club Member (3/6) may only delete QSOs he made himself; officers and normal users are unaffected 
+		$ids_array = clubaccess_filter_qso_ids($requested_ids);
+		if (!empty($ids_array)) {
+			$this->load->model('logbookadvanced_model');
+			$this->logbookadvanced_model->deleteQsos(json_encode($ids_array));
+		}
+
+		header("Content-Type: application/json");
+		print json_encode([
+			'deleted'   => array_values($ids_array),
+			'requested' => count($requested_ids),
+		]);
 	}
 
 	public function getSubdivisionsForDxcc() {
