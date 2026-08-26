@@ -18,17 +18,19 @@ class Distances_model extends CI_Model
 		}
 
 		$result = array();
+		$station_grid_found = 0;
 
 		foreach ($logbooks_locations_array as $station_id) {
 
 			$station_gridsquare = $this->find_gridsquare($station_id);
 
 			if ($station_gridsquare != null) {
+				$station_grid_found = 1;
 				$gridsquare = explode(',', $station_gridsquare); // We need to convert to an array, since a user can enter several gridsquares
 
 				$table = $this->config->item('table_name');
 				$sql = "
-					SELECT COL_PRIMARY_KEY, COL_DISTANCE, COL_ANT_PATH, col_call callsign, col_gridsquare grid
+					SELECT COL_PRIMARY_KEY, COL_DISTANCE, COL_ANT_PATH, COL_ANT_AZ, COL_PROP_MODE, col_call callsign, col_gridsquare grid
 					FROM $table
 					LEFT OUTER JOIN satellite
 						ON $table.COL_PROP_MODE = 'SAT'
@@ -70,6 +72,12 @@ class Distances_model extends CI_Model
 					$params[] = $clean_postdata['propagation'];
 				}
 
+				if (!empty($clean_postdata['mode']) && $clean_postdata['mode'] != 'All') {
+					$sql .= " AND (col_mode = ? OR col_submode = ?)";
+					$params[] = $clean_postdata['mode'];
+					$params[] = $clean_postdata['mode'];
+				}
+
 				$queryresult = $this->db->query($sql, $params);
 
 				if ($queryresult->result_array()) {
@@ -88,8 +96,13 @@ class Distances_model extends CI_Model
 			echo json_encode($result);
 		}
 		else {
-			header('Content-Type: application/json');
-			echo json_encode(array('Error' => 'No QSOs found to plot.'));
+			if ($station_grid_found == 0) {
+				header('Content-Type: application/json');
+				echo json_encode(array('Error' => 'No station gridsquare(s) found in active logbook. Please check.'));
+			} else {
+				header('Content-Type: application/json');
+				echo json_encode(array('Error' => 'No QSOs found to plot.'));
+			}
 		}
 
 	}
@@ -146,6 +159,43 @@ class Distances_model extends CI_Model
 		}
 
 		return null;
+	}
+
+	/*
+	 * Returns every mode/submode worked in the active logbook, lowercased and
+	 * sorted. Used to populate the mode filter dropdown.
+	 */
+	function get_worked_modes() {
+
+		$this->load->model('logbooks_model');
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+
+		if ($logbooks_locations_array[0] === -1) {
+			return array();
+		}
+
+		$location_list = "'".implode("','",$logbooks_locations_array)."'";
+
+		// get all worked modes from database
+		$data = $this->db->query(
+			"SELECT distinct LOWER(`COL_MODE`) as `COL_MODE` FROM `" . $this->config->item('table_name') . "` WHERE station_id in (" . $location_list . ") order by COL_MODE ASC"
+		);
+		$results = array();
+		foreach ($data->result() as $row) {
+			array_push($results, $row->COL_MODE);
+		}
+
+		$data = $this->db->query(
+			"SELECT distinct LOWER(`COL_SUBMODE`) as `COL_SUBMODE` FROM `" . $this->config->item('table_name') . "` WHERE station_id in (" . $location_list . ") and coalesce(COL_SUBMODE, '') <> '' order by COL_SUBMODE ASC"
+		);
+		foreach ($data->result() as $row) {
+			if (!in_array($row, $results)) {
+				array_push($results, $row->COL_SUBMODE);
+			}
+		}
+		asort($results);
+
+		return $results;
 	}
 
     // This functions takes query result from the database and extracts grids from the qso,
@@ -209,10 +259,11 @@ class Distances_model extends CI_Model
 				$qrb['Qsos']++;                                                        // Counts up number of qsos
 				$bearingdistance = $this->qra->distance($stationgrid, $qso['grid'], $measurement_base, $qso['COL_ANT_PATH']);
 				$bearingdistance_km = $this->qra->distance($stationgrid, $qso['grid'], 'K', $qso['COL_ANT_PATH']);
-				if ($bearingdistance_km != $qso['COL_DISTANCE']) {
-					$data = array('COL_DISTANCE' => $bearingdistance_km);
+
+				$updatedata = $this->geodata_update($stationgrid, $qso, false, $bearingdistance_km);
+				if (!empty($updatedata)) {
 					$this->db->where('COL_PRIMARY_KEY', $qso['COL_PRIMARY_KEY']);
-					$this->db->update($this->config->item('table_name'), $data);
+					$this->db->update($this->config->item('table_name'), $updatedata);
 				}
 				$arrayplacement = (int)($bearingdistance / 50);                                // Resolution is 50, calculates where to put result in array
 				if ($bearingdistance > $qrb['Distance']) {                              // Saves the longest QSO
@@ -242,6 +293,99 @@ class Distances_model extends CI_Model
 		}
 	}
 
+	/*
+	 * Works out which geodata-columns of a single QSO need writing.
+	 * Input:  $stationgrid    gridsquare of the station_profile (uppercase, at least 6 chars)
+	 *         $qso            row containing COL_DISTANCE, COL_ANT_PATH, COL_ANT_AZ, COL_PROP_MODE and grid
+	 *         $only_if_empty  true: only fill a missing distance (Antenna Analytics repairs gaps only)
+	 *                         false: also refresh a stale distance (Distances Worked recalculates)
+	 *         $distance_km    already calculated distance in km, saves recalculating it
+	 * Returns: array of columns to update, empty if there is nothing to do
+	 */
+	private function geodata_update($stationgrid, $qso, $only_if_empty = false, $distance_km = null) {
+		if(!$this->load->is_loaded('Qra')) {
+			$this->load->library('Qra');
+		}
+		if ($distance_km === null) {
+			$distance_km = $this->qra->distance($stationgrid, $qso['grid'], 'K', $qso['COL_ANT_PATH']);
+		}
+
+		$updatedata = array();
+		$distance_missing = ($qso['COL_DISTANCE'] === null || $qso['COL_DISTANCE'] === '');
+		if ($only_if_empty ? $distance_missing : ($distance_km != $qso['COL_DISTANCE'])) {
+			$updatedata['COL_DISTANCE'] = $distance_km;
+		}
+		$is_shortwave = trim((string)$qso['COL_PROP_MODE']) === '';   // only plain HF/VHF+ terrestrial QSOs -- SAT, EME, MS, etc. don't follow the great-circle bearing
+		if ($is_shortwave && ($qso['COL_ANT_AZ'] === null || $qso['COL_ANT_AZ'] === '')) {   // only fill if empty -- never overwrite a user/ADIF-supplied value
+			$bearing = $this->qra->get_bearing($stationgrid, $qso['grid'], $qso['COL_ANT_PATH']);
+			if ($bearing !== false) {   // unparsable qso-grid: leave the column NULL rather than stamping it with 0 (= due north)
+				$updatedata['COL_ANT_AZ'] = $bearing;
+			}
+		}
+
+		return $updatedata;
+	}
+
+	/*
+	 * Fills distance and bearing for QSOs of the active logbook which are still missing them.
+	 * Called when opening a page which reads those columns (e.g. Antenna Analytics), so a log
+	 * imported without ANT_AZ/DISTANCE gets repaired without having to visit Distances Worked.
+	 * Only gaps are filled, existing values are never touched.
+	 */
+	public function backfill_missing_geodata() {
+		$this->load->model('logbooks_model');
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+
+		if ($logbooks_locations_array[0] === -1) {
+			return;
+		}
+
+		$table = $this->config->item('table_name');
+
+		foreach ($logbooks_locations_array as $station_id) {
+			$station_gridsquare = $this->find_gridsquare($station_id);
+
+			if ($station_gridsquare == null) {
+				continue;
+			}
+
+			$gridsquare = explode(',', $station_gridsquare);        // A user can enter several gridsquares
+			$stationgrid = strtoupper(trim($gridsquare[0]));        // We use only the first entered gridsquare from the active profile
+			if (strlen($stationgrid) == 4) $stationgrid .= 'MM';    // adding center of grid if only 4 digits are specified
+
+			if (!$this->valid_locator($stationgrid)) {              // Broken profile-grid: skip this station, this runs while rendering a page
+				continue;
+			}
+
+			$sql = "
+				SELECT COL_PRIMARY_KEY, COL_DISTANCE, COL_ANT_PATH, COL_ANT_AZ, COL_PROP_MODE, col_gridsquare grid
+				FROM $table
+				WHERE LENGTH(col_gridsquare) > 0
+					AND station_id = ?
+					AND (
+						COL_DISTANCE IS NULL
+						OR (COL_ANT_AZ IS NULL AND (COL_PROP_MODE IS NULL OR TRIM(COL_PROP_MODE) = ''))
+					)
+			";
+
+			$qsoArray = $this->db->query($sql, array($station_id))->result_array();
+
+			if (!$qsoArray) {
+				continue;
+			}
+
+			$this->db->trans_start();
+			foreach ($qsoArray as $qso) {
+				$updatedata = $this->geodata_update($stationgrid, $qso, true);
+				if (!empty($updatedata)) {
+					$this->db->where('COL_PRIMARY_KEY', $qso['COL_PRIMARY_KEY']);
+					$this->db->update($table, $updatedata);
+				}
+			}
+			$this->db->trans_complete();
+		}
+	}
+
     /*
      * Checks the validity of the locator
      * Input: locator
@@ -263,7 +407,7 @@ class Distances_model extends CI_Model
     /*
 	 * Used to fetch QSOs from the logbook in the awards
 	 */
-	public function qso_details($distance, $band, $sat, $propagation){
+	public function qso_details($distance, $band, $sat, $propagation, $mode = 'All'){
 		$distarray = $this->getdistparams($distance);
 		$this->load->model('logbooks_model');
 		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
@@ -323,6 +467,12 @@ class Distances_model extends CI_Model
 		} else {				// Propmode set, take care of it
 			$sql .= " AND col_prop_mode = ?";
 			$params[] = $propagation;
+		}
+
+		if ($mode != 'All' && $mode != '') {
+			$sql .= " AND (col_mode = ? OR col_submode = ?)";
+			$params[] = $mode;
+			$params[] = $mode;
 		}
 
 		$sql .= " ORDER BY COL_TIME_ON DESC";

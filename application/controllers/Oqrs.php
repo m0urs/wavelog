@@ -146,6 +146,12 @@ class Oqrs extends CI_Controller {
 
 		$postdata = $this->input->post(NULL, TRUE); // index is null means we get all postdata, TRUE means we XSS clean everything
 		$this->load->model('oqrs_model');
+		$err = $this->_validate_oqrs_times($postdata);
+		if ($err !== null) {
+			$this->output->set_status_header(400)->set_content_type('application/json')
+				->set_output(json_encode(['error' => $err]));
+			return;
+		}
 		$this->oqrs_model->save_not_in_log($postdata);
 		array_push($station_ids, $this->input->post('station_id', TRUE));
 		$this->_alert_oqrs_request($postdata, $station_ids);
@@ -194,6 +200,12 @@ class Oqrs extends CI_Controller {
 	public function save_oqrs_request() {
 		$postdata = $this->input->post(NULL, TRUE); // index is null means we get all postdata, TRUE means we XSS clean everything
 		$this->load->model('oqrs_model');
+		$err = $this->_validate_oqrs_times($postdata);
+		if ($err !== null) {
+			$this->output->set_status_header(400)->set_content_type('application/json')
+				->set_output(json_encode(['error' => $err]));
+			return;
+		}
 		$station_ids = $this->oqrs_model->save_oqrs_request($postdata);
 		$this->_alert_oqrs_request($postdata, $station_ids);
 	}
@@ -201,6 +213,12 @@ class Oqrs extends CI_Controller {
 	public function save_oqrs_request_grouped() {
 		$postdata = $this->input->post(NULL, TRUE); // index is null means we get all postdata, TRUE means we XSS clean everything
 		$this->load->model('oqrs_model');
+		$err = $this->_validate_oqrs_times($postdata);
+		if ($err !== null) {
+			$this->output->set_status_header(400)->set_content_type('application/json')
+				->set_output(json_encode(['error' => $err]));
+			return;
+		}
 		$station_ids = $this->oqrs_model->save_oqrs_request_grouped($postdata);
 		$this->_alert_oqrs_request($postdata, $station_ids);
 	}
@@ -261,9 +279,24 @@ class Oqrs extends CI_Controller {
 		$this->load->view('oqrs/qsolist', $data);
 	}
 
+	private function _validate_oqrs_times(&$postdata) {
+		foreach ($postdata['qsos'] ?? [] as $i => $qso) {
+			$d = $this->oqrs_model->normalize_date($qso[0] ?? '');
+			if ($d === null) {
+				return __("Please enter a valid date.");
+			}
+			$postdata['qsos'][$i][0] = $d;
+			$t = $this->oqrs_model->normalize_time($qso[1] ?? '');
+			if ($t === null) {
+				return __("Please enter a valid time.");
+			}
+			$postdata['qsos'][$i][1] = $t;
+		}
+		return null;
+	}
+
 	private function _alert_oqrs_request($postdata, $station_ids) {
 		foreach ($station_ids as $id) {
-			$this->load->model('user_model');
 
 			$email = $this->user_model->get_email_address($id);
 
@@ -392,7 +425,6 @@ class Oqrs extends CI_Controller {
 	}
 
 	private function _check_auth() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2) || !clubaccess_check(9)) { 
 			$this->session->set_flashdata('error', __("You're not allowed to do that!")); 
 			redirect('dashboard');

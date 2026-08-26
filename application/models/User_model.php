@@ -86,14 +86,6 @@ class User_Model extends CI_Model {
 		return $r;
 	}
 
-	// FUNCTION: object get_all_dcl_users
-	// Returns all users with dcl details
-	function get_all_dcl_users() {
-		$sql="SELECT distinct user_id from user_options where option_name='dcl_key' and option_key='key' and option_value is not null";
-		$resu=$this->db->query($sql);
-		return $resu->result();
-	}
-
 	// FUNCTION: object get_by_email($email)
 	// Retrieve a user by email address
 	function get_by_email($email) {
@@ -256,9 +248,10 @@ class User_Model extends CI_Model {
 		$user_language, $user_hamsat_key, $user_hamsat_workable_only, $user_iota_to_qso_tab, $user_sota_to_qso_tab,
 		$user_wwff_to_qso_tab, $user_pota_to_qso_tab, $user_sig_to_qso_tab, $user_dok_to_qso_tab, $user_station_to_qso_tab,
 		$user_lotw_name, $user_lotw_password, $user_eqsl_name, $user_eqsl_password, $user_clublog_name, $user_clublog_password,
-		$user_winkey, $on_air_widget_enabled, $on_air_widget_display_last_seen, $on_air_widget_show_only_most_recent_radio,
+		$user_winkey, $on_air_widget_enabled, $on_air_widget_display_last_seen, $on_air_widget_show_only_most_recent_radio, $on_air_widget_display_radio_name,
 		$qso_widget_display_qso_time, $dashboard_banner, $dashboard_solar, $global_oqrs_text, $oqrs_grouped_search,
-		$oqrs_grouped_search_show_station_name, $oqrs_auto_matching, $oqrs_direct_auto_matching,$user_dxwaterfall_enable, $user_qso_show_map, $clubstation = 0, $external_account = null) {
+		$oqrs_grouped_search_show_station_name, $oqrs_auto_matching, $oqrs_direct_auto_matching,$user_dxwaterfall_enable, $user_qso_show_map,
+		$last_lotw_upload_widget_enabled, $clubstation = 0, $external_account = null) {
 		// Check that the user isn't already used
 		if(!$this->exists($username)) {
 			$data = array(
@@ -347,9 +340,11 @@ class User_Model extends CI_Model {
 				['widget',     'on_air',                  'enabled',                       $on_air_widget_enabled                      ?? 'false'],
 				['widget',     'on_air',                  'display_last_seen',             $on_air_widget_display_last_seen            ?? 'false'],
 				['widget',     'on_air',                  'display_only_most_recent_radio',$on_air_widget_show_only_most_recent_radio  ?? 'true'],
+				['widget',     'on_air',                  'display_radio_name',            $on_air_widget_display_radio_name           ?? 'false'],
 				['widget',     'qso',                     'display_qso_time',              $qso_widget_display_qso_time                ?? 'false'],
 				['qso_db_search_priority', 'enable',      'boolean',                       $user_qso_db_search_priority ?? 'Y'],
 				['dxwaterfall', 'enable',                 'boolean',                       $user_dxwaterfall_enable     ?? 'N'],
+				['widget',     'last_lotw_upload',        'enabled',                       $last_lotw_upload_widget_enabled            ?? 'false'],
 			];
 
 			foreach ($user_options as [$type, $name, $key, $value]) {
@@ -430,13 +425,15 @@ class User_Model extends CI_Model {
 					['widget',     'on_air',                  'enabled',                       $fields['on_air_widget_enabled']                     ?? 'false'],
 					['widget',     'on_air',                  'display_last_seen',             $fields['on_air_widget_display_last_seen']           ?? 'false'],
 					['widget',     'on_air',                  'display_only_most_recent_radio',$fields['on_air_widget_show_only_most_recent_radio'] ?? 'true'],
+					['widget',     'on_air',                  'display_radio_name',            $fields['on_air_widget_display_radio_name']          ?? 'false'],
 					['widget',     'qso',                     'display_qso_time',              $fields['qso_widget_display_qso_time']               ?? 'false'],
 					['dashboard',  'last_qso_count',          'count',                         $dashboard_last_qso_count],
 					['dashboard',  'show_map',                'boolean',                       $fields['user_dashboard_map']    ?? 'Y'],
 					['dashboard',  'show_dashboard_banner',   'boolean',                       $fields['user_dashboard_banner'] ?? 'Y'],
 					['dashboard',  'show_dashboard_solar',    'boolean',                       $fields['user_dashboard_solar']  ?? 'N'],
 					['qso_db_search_priority', 'enable',      'boolean',                       $fields['user_qso_db_search_priority'] ?? 'Y'],
-					['dxwaterfall', 'enable',                 'boolean',                       $fields['user_dxwaterfall_enable']     ?? 'N'],
+					['dxwaterfall','enable',                  'boolean',                       $fields['user_dxwaterfall_enable']     ?? 'N'],
+					['widget',     'last_lotw_upload',        'enabled',                       $fields['last_lotw_upload_widget_enabled']           ?? 'false'],
 				];
 
 				foreach ($user_options as [$type, $name, $key, $value]) {
@@ -549,6 +546,7 @@ class User_Model extends CI_Model {
 			// Delete QSOs from $this->config->item('table_name')
 			$this->db->query("DELETE FROM bandxuser WHERE userid = ?",$user_id);
 			$this->db->query("DELETE FROM api WHERE user_id = ? OR created_by = ?", [$user_id, $user_id]);
+			$this->db->query("DELETE FROM api_token WHERE user_id = ? OR created_by = ?", [$user_id, $user_id]);
 			$this->db->query("DELETE FROM club_permissions WHERE user_id = ? OR club_id = ?", [$user_id, $user_id]);
 			$this->db->query("DELETE FROM cat WHERE user_id = ?",$user_id);
 			$this->db->query("DELETE FROM lotw_certs WHERE user_id = ?",$user_id);
@@ -634,14 +632,14 @@ class User_Model extends CI_Model {
 			'radio' 						=> ((($sess['radio'] ?? '') == '') ? ($user_options['cat']['default_radio']['radio_id'] ?? '') : $sess['radio']),
 			'station_profile_id' 			=> $sess['station_profile_id'] ?? '',
 			'user_measurement_base' 		=> $u->user_measurement_base,
-			'user_dashboard_map' 			=> ((($sess['user_dashboard_map'] ?? 'Y') == 'Y') ? ($user_options['dashboard']['show_map']['boolean'] ?? 'Y') : ($sess['user_dashboard_map'] ?? 'Y')),
-			'user_dashboard_banner' 		=> ((($sess['user_dashboard_banner'] ?? 'Y') == 'Y') ? ($user_options['dashboard']['show_dashboard_banner']['boolean'] ?? 'Y') : ($sess['user_dashboard_banner'] ?? 'Y')),
-			'user_dashboard_solar' 			=> ((($sess['user_dashboard_solar'] ?? 'N') == 'Y') ? ($sess['user_dashboard_solar'] ?? 'N') : ($user_options['dashboard']['show_dashboard_solar']['boolean'] ?? 'N')),
-			'user_dashboard_show_dxpeditions' => ((($sess['user_dashboard_show_dxpeditions'] ?? '0') == '1') ? ($sess['user_dashboard_show_dxpeditions'] ?? '0') : ($user_options['dashboard']['show_dxpeditions']['boolean'] ?? '0')),
-			'user_dashboard_show_contests' 	=> ((($sess['user_dashboard_show_contests'] ?? '0') == '1') ? ($sess['user_dashboard_show_contests'] ?? '0') : ($user_options['dashboard']['show_contests']['boolean'] ?? '0')),
-			'user_dashboard_show_kpi_stats'	=> ((($sess['user_dashboard_show_kpi_stats'] ?? '1') == '1') ? ($sess['user_dashboard_show_kpi_stats'] ?? '1') : ($user_options['dashboard']['show_kpi_stats']['boolean'] ?? '1')),
-			'user_qso_db_search_priority' 	=> ((($sess['user_qso_db_search_priority'] ?? 'Y') == 'Y') ? ($sess['user_qso_db_search_priority'] ?? 'Y') : ($user_options['qso_db_search_priority']['enable']['boolean'] ?? 'Y')),
-			'user_dxwaterfall_enable' 		=> ((($sess['user_dxwaterfall_enable'] ?? 'N') == 'Y') ? ($sess['user_dxwaterfall_enable'] ?? 'N') : ($user_options['dxwaterfall']['enable']['boolean'] ?? 'N')),
+			'user_dashboard_map' 			=> array_key_exists('user_dashboard_map', $sess) ? $sess['user_dashboard_map'] : ($user_options['dashboard']['show_map']['boolean'] ?? 'Y'),
+			'user_dashboard_banner' 		=> array_key_exists('user_dashboard_banner', $sess) ? $sess['user_dashboard_banner'] : ($user_options['dashboard']['show_dashboard_banner']['boolean'] ?? 'Y'),
+			'user_dashboard_solar' 			=> array_key_exists('user_dashboard_solar', $sess) ? $sess['user_dashboard_solar'] : ($user_options['dashboard']['show_dashboard_solar']['boolean'] ?? 'N'),
+			'user_dashboard_show_dxpeditions' => array_key_exists('user_dashboard_show_dxpeditions', $sess) ? $sess['user_dashboard_show_dxpeditions'] : ($user_options['dashboard']['show_dxpeditions']['boolean'] ?? '0'),
+			'user_dashboard_show_contests' 	=> array_key_exists('user_dashboard_show_contests', $sess) ? $sess['user_dashboard_show_contests'] : ($user_options['dashboard']['show_contests']['boolean'] ?? '0'),
+			'user_dashboard_show_kpi_stats'	=> array_key_exists('user_dashboard_show_kpi_stats', $sess) ? $sess['user_dashboard_show_kpi_stats'] : ($user_options['dashboard']['show_kpi_stats']['boolean'] ?? '1'),
+			'user_qso_db_search_priority' 	=> array_key_exists('user_qso_db_search_priority', $sess) ? $sess['user_qso_db_search_priority'] : ($user_options['qso_db_search_priority']['enable']['boolean'] ?? 'Y'),
+			'user_dxwaterfall_enable' 		=> array_key_exists('user_dxwaterfall_enable', $sess) ? $sess['user_dxwaterfall_enable'] : ($user_options['dxwaterfall']['enable']['boolean'] ?? 'N'),
 			'user_date_format' 				=> $u->user_date_format,
 			'user_stylesheet' 				=> $u->user_stylesheet,
 			'user_qth_lookup' 				=> isset($u->user_qth_lookup) ? $u->user_qth_lookup : 0,
@@ -664,7 +662,7 @@ class User_Model extends CI_Model {
 			'user_quicklog' 				=> isset($u->user_quicklog) ? $u->user_quicklog : 1,
 			'user_quicklog_enter' 			=> isset($u->user_quicklog_enter) ? $u->user_quicklog_enter : 1,
 			'active_station_logbook' 		=> $u->active_station_logbook,
-			'user_stations_active_log_only' => ((($sess['user_stations_active_log_only'] ?? '0') == '1') ? ($sess['user_stations_active_log_only'] ?? '0') : ($user_options['stations']['active_log_only']['boolean'] ?? '0')),
+			'user_stations_active_log_only' => array_key_exists('user_stations_active_log_only', $sess) ? $sess['user_stations_active_log_only'] : ($user_options['stations']['active_log_only']['boolean'] ?? '0'),
 			'user_language' 				=> isset($u->user_language) ? $u->user_language: 'english',
 			'isWinkeyEnabled' 				=> $u->winkey,
 			'FirstLoginWizard' 				=> ((($sess['FirstLoginWizard'] ?? '') == '') ? ($user_options['FirstLoginWizard']['showed']['boolean'] ?? null) : $sess['FirstLoginWizard']),
@@ -728,7 +726,7 @@ class User_Model extends CI_Model {
 			$user_hash = $this->session->userdata('user_hash');
 			$impersonate = $this->session->userdata('impersonate');
 
-			if(ENVIRONMENT != 'maintenance') {
+			if(!MAINTENANCE_MODE) {
 				$session_token = $this->session->userdata('session_token');
 				if($session_token && $this->_auth($user_id . $user_type . $session_token, $user_hash)) {
 					// Freshen the session
@@ -784,7 +782,7 @@ class User_Model extends CI_Model {
 
 			if($this->_auth($password, $u->row()->user_password)) {
 				$this->db->query("UPDATE users SET login_attempts = 0 WHERE user_id = ?", [$u->row()->user_id]);	// Reset failurecount
-				if (ENVIRONMENT != "maintenance") {
+				if (!MAINTENANCE_MODE) {
 					return 1;
 				} else {
 					if($u->row()->user_type != 99){
@@ -872,8 +870,6 @@ class User_Model extends CI_Model {
 		$this->db->update('users', $data);
 	}
 
-	// FUNCTION: bool authorize($level)
-	// Checks a user's level of access against the given $level
 	// FUNCTION: bool set_user_stylesheet($user_id, $foldername)
 	// Quickly switch the active theme (stylesheet foldername) for a single user.
 	// Used by the header theme switcher so users can change skin without opening
@@ -883,6 +879,22 @@ class User_Model extends CI_Model {
 		return $this->db->update('users', array('user_stylesheet' => xss_clean($foldername)));
 	}
 
+	/**
+	 * Whether a user is a Wavelog administrator (user_type 99)
+	 *
+	 * @param int $user_id
+	 * @return boolean
+	 */
+	function is_admin($user_id) {
+		$u = $this->get_by_id($user_id);
+		if ($u->num_rows() == 0) {
+			return false;
+		}
+		return $u->row()->user_type == 99;
+	}
+
+	// FUNCTION: bool authorize($level)
+	// Checks a user's level of access against the given $level
 	function authorize($level) {
 		$u = $this->get_by_id($this->session->userdata('user_id'));
 		$l = $this->config->item('auth_mode');
@@ -1167,6 +1179,12 @@ class User_Model extends CI_Model {
 			$this->db->trans_rollback();
 			return false;
 		}
+
+		$this->load->model('api_v2_model');
+		$this->api_v2_model->revoke_club_tokens($user_id);
+
+		$this->db->query("DELETE FROM api WHERE user_id = ? AND created_by != ?", [$user_id, $user_id]);
+		$this->db->query("DELETE FROM cat WHERE user_id = ? AND operator != ?", [$user_id, $user_id]);
 
 		$this->db->trans_complete();
 

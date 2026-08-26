@@ -36,6 +36,8 @@ switch ($date_format) {
   var lang_lotw_upload_day_ago = "<?= __("LoTW User. Last upload was 1 day ago."); ?>";
   var lang_lotw_upload_days_ago = "<?= __("LoTW User. Last upload was %x days ago."); ?>"; // due to the way the string is built (PHP to JS), %x is replaced with the number of days
   var lang_invalid_ant_el = "<?= __("Invalid value for antenna elevation:"); ?>";
+  var lang_qso_sat_below_horizon_confirm = "<?= __("Satellite appears below the horizon (elevation %s°). The stored TLE may be outdated for this QSO time. Do you really want to log this QSO?"); ?>";
+  var lang_invalid_callsign = "<?= __("Invalid callsign"); ?>";
   var lang_qso_wait_before_saving = "<?= __("Please wait before saving another QSO"); ?>";
   var latlng=[<?php echo $lat.','.$lng;?>];
   var user_date_format = "<?php echo $date_format; ?>"; // Pass the user's date format to JavaScript
@@ -134,7 +136,7 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
 	<?php if ($user_station_to_qso_tab ?? false) { ?>
 	<div class="row">
               <div class="mb-3 col-md-12">
-              <label class="col-sm-3 col-form-label" for="stationProfile"><?= __("Station Location"); ?></label>
+              <label class="col-form-label" for="stationProfile"><?= __("Station Location"); ?></label>
               <select id="stationProfile" class="form-select form-control form-control-sm" name="station_profile" onChange="panMap(this.value);">
                 <?php
                    $power = '';
@@ -663,19 +665,18 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
             <div class="mb-3">
               <label for="sat_name"><?= __("Satellite Name"); ?></label>
 
-              <input list="satellite_names" id="sat_name" type="text" name="sat_name" class="form-control" value="<?php echo $this->session->userdata('sat_name'); ?>">
+              <input type="text" class="form-control" id="sat_name" name="sat_name" value="<?php echo $this->session->userdata('sat_name'); ?>" onblur="setTimeout(() => document.getElementById('satellite_names_list').innerHTML = '', 150)">
+              <ul class="list-group position-absolute" id="satellite_names_list" style="width: 95%; max-height: 512px; overflow-y: auto; z-index: 1100; display: none;"></ul>
               <div style="min-height: 24px;">
                  <small id="lotw_support" class="form-text text-muted" style="min-height: 20px;">&nbsp;</small>
               </div>
-              <datalist id="satellite_names" class="satellite_names_list"></datalist>
             </div>
 
             <div class="mb-3">
               <label for="sat_mode"><?= __("Satellite Mode"); ?></label>
 
-              <input list="satellite_modes" id="sat_mode" type="text" name="sat_mode" class="form-control" value="<?php echo $this->session->userdata('sat_mode'); ?>">
-
-              <datalist id="satellite_modes" class="satellite_modes_list"></datalist>
+              <input type="text" id="sat_mode" name="sat_mode" class="form-control" value="<?php echo $this->session->userdata('sat_mode'); ?>" onblur="setTimeout(() => document.getElementById('satellite_modes_list').innerHTML = '', 150)">
+              <ul class="list-group position-absolute" id="satellite_modes_list" style="width: 95%; max-height: 512px; overflow-y: auto; z-index: 1100; display: none;"></ul>
             </div>
 
             <div class="mb-3">
@@ -686,7 +687,7 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
 
             <div class="mb-3">
               <label for="ant_el"><?= __("Antenna Elevation (°)"); ?></label>
-              <input type="number" inputmode="decimal" step="0.1" min="-5" max="90" class="form-control" id="ant_el" name="ant_el" onInvalid="invalidAntEl()" />
+              <input type="number" inputmode="decimal" step="0.1" max="90" class="form-control" id="ant_el" name="ant_el" onInvalid="invalidAntEl()" />
               <small id="elHelp" class="form-text text-muted"><?= __("Antenna elevation in decimal degrees."); ?></small>
             </div>
           </div>
@@ -739,9 +740,9 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
            <div class="mb-3">
             <label for="qslmsg"><?= __("QSL MSG"); ?> <button type="button" class="btn btn-link text-decoration-none p-0 align-baseline qso_eqsl_qslmsg_update" title="<?= __("Get the default message for eQSL, for this station."); ?>" aria-label="<?= __("Get the default message for eQSL, for this station."); ?>"><i class="fas fa-redo-alt" aria-hidden="true"></i></button></label>
 						<span class="position-absolute end-0 mb-2 me-3" id="charsLeft" aria-live="polite"> </span>
-            <textarea  type="text" class="form-control" id="qslmsg" name="qslmsg" rows="5" maxlength="240"><?php echo $qslmsg; ?></textarea>
+            <textarea  type="text" class="form-control" id="qslmsg" name="qslmsg" rows="5" maxlength="240"><?php echo html_escape($qslmsg); ?></textarea>
             <div class="small form-text text-muted"><?= __("Note: Gets exported to third-party services.") ?></div>
-            <div id="qslmsg_hide" style="display:none;"><?php echo $qslmsg; ?></div>
+            <div id="qslmsg_hide" style="display:none;"><?php echo html_escape($qslmsg); ?></div>
             </div>
           </div>
         </div>
@@ -905,14 +906,17 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
 
         <div id="partial_view" style="font-size: 0.95rem;" aria-live="polite" aria-atomic="true"></div>
 
-		<?php
-		$result = $this->optionslib->get_option('disable_refresh_past_contacts');
-		if($result === null) { ?>
-			<div id="qso-last-table" hx-get="<?php echo site_url('/qso/component_past_contacts'); ?>" hx-trigger="load, qso_event, every 15s" aria-live="polite" aria-atomic="true">
-		<?php } else { ?>
-			<div id="qso-last-table" hx-get="<?php echo site_url('/qso/component_past_contacts'); ?>" hx-trigger="load, qso_event" aria-live="polite" aria-atomic="true">
-		<?php } ?>
-
+		<?php $result = $this->optionslib->get_option('disable_refresh_past_contacts'); ?>
+			  <div 
+          id="qso-last-table" 
+          data-past-contacts-url="<?php echo site_url('/qso/component_past_contacts'); ?>" 
+          data-auto-refresh="<?php echo $result === null ? '1' : '0'; ?>"
+          <?php if (!empty($past_contacts_worker)) { ?> 
+            data-worker-topic="<?php echo html_escape($past_contacts_worker['topic']); ?>" 
+            data-worker-token="<?php echo html_escape($past_contacts_worker['token']); ?>"
+          <?php } ?> 
+          aria-live="polite" 
+          aria-atomic="true">
         </div>
       </div>
       <small style="float: right;"><?= sprintf(_ngettext("Max. %d previous contact is shown", "Max. %d previous contacts are shown", intval($qso_count)), intval($qso_count)); ?></small>
@@ -927,4 +931,5 @@ if (typeof window.DX_WATERFALL_FIELD_MAP === 'undefined') {
 
 <script>
 	var station_callsign = "<?php echo $station_callsign; ?>";
+  window.radioWorkerTopics = <?php echo json_encode($radio_worker_topics ?? []); ?>;
 </script>

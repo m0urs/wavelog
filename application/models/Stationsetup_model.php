@@ -15,11 +15,11 @@ class Stationsetup_model extends CI_Model {
 
 	function saveContainer() {
 		$data = array(
-			'logbook_name' => xss_clean($this->input->post('name', true)),
+			'logbook_name' => $this->input->post('name', true),
 		);
 
 		$this->db->where('user_id', $this->session->userdata('user_id'));
-		$this->db->where('logbook_id', xss_clean($this->input->post('id', true)));
+		$this->db->where('logbook_id', $this->input->post('id', true));
 		$this->db->update('station_logbooks', $data);
 	}
 
@@ -300,7 +300,7 @@ class Stationsetup_model extends CI_Model {
 				'station_pota'          => ((isset($loc['station_pota']) && $loc['station_pota'] != "") ? xss_clean($loc['station_pota']) : null),
 				'state'                 => ((isset($loc['state']) && $loc['state'] != "") ? xss_clean($loc['state']) : null),
 				'station_cnty'          => ((isset($loc['station_cnty']) && $loc['station_cnty'] != "") ? xss_clean($loc['station_cnty']) : null),
-				'qrzapikey'             => ((isset($loc['qrzapikey']) && $loc['qrzapikey'] != "") ? xss_clean($loc['qrzapikey']) : null),
+				'qrzapikey'             => ((isset($loc['qrzapikey']) && $loc['qrzapikey'] != "") ? trim(xss_clean($loc['qrzapikey'])) : null),
 				'qrzrealtime'           => ((isset($loc['qrzrealtime']) && $loc['qrzrealtime'] != "") ? xss_clean($loc['qrzrealtime']) : 0),
 				'oqrs'                  => ((isset($loc['oqrs']) && $loc['oqrs'] != "") ? xss_clean($loc['oqrs']) : 0),
 				'oqrs_text'             => ((isset($loc['oqrs_text']) && $loc['oqrs_text'] != "") ? xss_clean($loc['oqrs_text']) : null),
@@ -397,6 +397,25 @@ class Stationsetup_model extends CI_Model {
 		}
 
 		return 1;
+	}
+
+	/**
+	 * Update an existing station location from a plain column => value array,
+	 * scoped to the owner. Session-free counterpart to Stations::edit() for the
+	 * REST API (which has no POST form and no session user). Only the columns
+	 * present in $dbdata are written, so PATCH semantics are up to the caller.
+	 *
+	 * @param int        $station_id Target station_profile row.
+	 * @param array      $dbdata     column => value pairs to update.
+	 * @param int|null   $user_id    Owner; falls back to the session user.
+	 * @return int Number of affected rows.
+	 */
+	public function update_location($station_id, $dbdata, $user_id = null) {
+		$user_id = $user_id ?? $this->session->userdata('user_id');
+		$this->db->where('user_id', $user_id);
+		$this->db->where('station_id', $station_id);
+		$this->db->update('station_profile', $dbdata);
+		return $this->db->affected_rows();
 	}
 
 }

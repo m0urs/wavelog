@@ -4,7 +4,6 @@ class QSO extends CI_Controller {
 
 	function __construct() {
 		parent::__construct();
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$last_qso_count = empty($this->session->userdata('qso_page_last_qso_count')) ? QSO_PAGE_DEFAULT_QSOS_COUNT : $this->session->userdata('qso_page_last_qso_count');
@@ -16,7 +15,6 @@ class QSO extends CI_Controller {
 		$this->load->library('qra');
 		$this->load->model('stations');
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 		$this->load->model('usermodes');
 		$this->load->model('bands');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
@@ -46,6 +44,27 @@ class QSO extends CI_Controller {
 		$data['radios'] = $this->cat->radios(true);
 		$data['radio_last_updated'] = $this->cat->last_updated()->row();
 		$data['query'] = $this->logbook_model->last_custom($this->session->userdata('qso_page_last_qso_count'));
+
+		$this->load->is_loaded('worker') ?: $this->load->library('worker');
+		$data['worker_enabled'] = $this->worker->is_enabled(); // without this line the worker.js is not loaded!
+		$data['past_contacts_worker'] = null;
+		$user_id = $this->session->userdata('user_id') ?? null;
+		if ($this->worker->is_enabled() && $user_id) {
+			// qso past contacts (last 5) component
+			$topic = 'qso.' . $user_id;
+			$this->worker->register_topic($topic);
+			$data['past_contacts_worker'] = ['topic' => $topic, 'token' => $this->worker->create_token($topic)];
+
+			// radio polling: keyed by radio id so cat.js can look up the selected radio
+			$radio_worker_topics = [];
+			foreach ($data['radios']->result() as $radio) {
+				$topic = 'radio.' . $radio->id;
+				$this->worker->register_topic($topic);
+				$radio_worker_topics[$radio->id] = ['topic' => $topic, 'token' => $this->worker->create_token($topic)];
+			}
+			$data['radio_worker_topics'] = $radio_worker_topics;
+		}
+
 		$data['dxcc'] = $this->logbook_model->fetchDxcc();
 		$data['iota'] = $this->logbook_model->fetchIota();
 		$data['modes'] = $this->usermodes->active();
@@ -133,7 +152,9 @@ class QSO extends CI_Controller {
 		$this->form_validation->set_rules('callsign', 'Callsign', 'required');
 		$this->form_validation->set_rules('band', 'Band', 'required');
 		$this->form_validation->set_rules('mode', 'Mode', 'required');
-		$this->form_validation->set_rules('locator', 'Locator', 'callback_check_locator');
+		if (($this->input->post('locator') ?? '') != '') {
+			$this->form_validation->set_rules('locator', 'Locator', 'callback_check_locator[any]');
+		}
 
 		// [eQSL default msg] GET user options (option_type='eqsl_default_qslmsg'; option_name='key_station_id'; option_key=station_id) //
 		$options_object = $this->user_options_model->get_options('eqsl_default_qslmsg',array('option_name'=>'key_station_id','option_key'=>$data['active_station_profile']))->result();
@@ -190,6 +211,9 @@ class QSO extends CI_Controller {
 				$this->session->set_userdata('prop_mode', 'SAT');
 			}
 
+			// All session writes are done, release the lock before the expensive part
+			session_write_close();
+
 			// Add QSO
 			// $this->logbook_model->add();
 			//change to create_qso function as add and create_qso duplicate functionality
@@ -198,6 +222,16 @@ class QSO extends CI_Controller {
 			// Clear POST data to prevent re-submission on page reload
 			$_POST = [];
 			$this->form_validation->reset_validation();
+
+			if (!is_array($saveresult) || empty($saveresult['qso_id'])) {
+				$returner = [
+					'message' => 'error',
+					'errors'  => is_string($saveresult) ? $saveresult : __("QSO could not be saved"),
+				];
+				header('Content-Type: application/json; charset=utf-8');
+				echo json_encode($returner);
+				return;
+			}
 
 			$returner=[];
 			$actstation=$this->stations->find_active() ?? '';
@@ -230,6 +264,8 @@ class QSO extends CI_Controller {
 			return;
 		}
 
+		session_write_close();
+
 		$this->load->model('logbook_model');
 
 		$qso_data = [
@@ -241,7 +277,6 @@ class QSO extends CI_Controller {
 			'prop_mode' => $this->input->post('prop_mode', TRUE) ?? '',
 			'email' => $this->input->post('email', TRUE) ?? NULL,
 			'region' => $this->input->post('region', TRUE) ?? NULL,
-			'sat_name' => $this->input->post('sat_name', TRUE) ?? NULL,
 			'exchangetype' => $this->input->post('exchangetype', TRUE) ?? NULL,
 			'exch_rcvd' => $this->input->post('exch_rcvd', TRUE) ?? NULL,
 			'exch_sent' => $this->input->post('exch_sent', TRUE) ?? NULL,
@@ -298,38 +333,6 @@ class QSO extends CI_Controller {
 		$result = $this->logbook_model->create_qso($qso_data);
 
 		return json_encode($result, JSON_PRETTY_PRINT);
-	}
-
-	function edit() {
-
-		$this->load->model('logbook_model');
-		$this->load->model('user_model');
-		$this->load->model('modes');
-		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
-		$query = $this->logbook_model->qso_info($this->uri->segment(3));
-
-		$this->load->library('form_validation');
-
-		$this->form_validation->set_rules('time_on', 'Start Date', 'required');
-		$this->form_validation->set_rules('time_off', 'End Date', 'required');
-		$this->form_validation->set_rules('callsign', 'Callsign', 'required');
-
-		$data['qso'] = $query->row();
-		$data['dxcc'] = $this->logbook_model->fetchDxcc();
-		$data['iota'] = $this->logbook_model->fetchIota();
-		$data['modes'] = $this->modes->all();
-
-		if ($this->form_validation->run() == FALSE) {
-			$this->load->view('qso/edit', $data);
-		} else {
-			$edit_result=$this->logbook_model->edit();
-			if ($edit_result['success']) {
-				$this->session->set_flashdata('notice', 'Record Updated');
-			} else {
-				$this->session->set_flashdata('notice', 'Record not Updated');
-			}
-			$this->load->view('qso/edit_done');
-		}
 	}
 
 	function winkeysettings() {
@@ -464,7 +467,6 @@ class QSO extends CI_Controller {
 	function edit_ajax() {
 
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 		$this->load->model('modes');
 		$this->load->model('bands');
 		$this->load->model('contest_admin_model');
@@ -493,13 +495,18 @@ class QSO extends CI_Controller {
 	function qso_save_ajax() {
 		$this->load->library('form_validation');
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) {
 			$this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard');
 		}
 		$this->form_validation->set_rules('time_on', 'Start Date', 'required');
 		$this->form_validation->set_rules('time_off', 'End Date', 'required');
 		$this->form_validation->set_rules('id', 'qso ID', 'required');
+		if (strtoupper(trim($this->input->post('locator')) ?? '') != '') {
+			$this->form_validation->set_rules('gridsquare', 'Locator', 'callback_check_locator[grid]');
+		}
+		if (strtoupper(trim($this->input->post('vucc_grids')) ?? '') != '') {
+			$this->form_validation->set_rules('vucc_grids', 'VUCC Grids', 'callback_check_locator[vucc]');
+		}
 
 		$edit_result=array();
 		$edit_result['success']=false;
@@ -517,7 +524,6 @@ class QSO extends CI_Controller {
 
 	function qsl_rcvd($id, $method) {
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		// Update Logbook to Mark Paper Card Received
@@ -534,7 +540,6 @@ class QSO extends CI_Controller {
 		$method = str_replace('"', "", $this->input->post("method", TRUE));
 
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 
 		header('Content-Type: application/json');
 
@@ -555,7 +560,6 @@ class QSO extends CI_Controller {
 		$method = str_replace('"', "", $this->input->post("method", TRUE));
 
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 
 		header('Content-Type: application/json');
 
@@ -576,7 +580,6 @@ class QSO extends CI_Controller {
 		$method = str_replace('"', "", $this->input->post("method", TRUE));
 
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 
 		header('Content-Type: application/json');
 
@@ -597,7 +600,6 @@ class QSO extends CI_Controller {
 		$method = str_replace('"', "", $this->input->post("method", TRUE));
 
 		$this->load->model('logbook_model');
-		$this->load->model('user_model');
 
 		header('Content-Type: application/json');
 
@@ -657,6 +659,7 @@ class QSO extends CI_Controller {
 
 
 	function band_to_freq($band, $mode) {
+		session_write_close();
 
 		if ($band != null and $band != 'null') {
 			echo $this->frequency->convert_band($band, $mode);
@@ -668,79 +671,36 @@ class QSO extends CI_Controller {
 	 * Function is used for autocompletion of SOTA in the QSO entry form
 	 */
 	public function get_sota() {
-		$this->load->library('sota');
-		$json = [];
+		session_write_close();
 
 		$query = $this->input->get('query', TRUE) ?? FALSE;
-		$json = $this->sota->get($query);
+
+		$this->load->model('sota');
+		$json = $this->sota->search_refs($query);
 
 		header('Content-Type: application/json');
 		echo json_encode($json);
 	}
 
 	public function get_wwff() {
-		$json = [];
+		session_write_close();
 
 		$query = $this->input->get('query', TRUE) ?? FALSE;
-		$wwff = strtoupper($query);
 
-		$file = 'updates/wwff.txt';
-
-		if (is_readable($file)) {
-			$lines = file($file, FILE_IGNORE_NEW_LINES);
-			$input = preg_quote($wwff, '~');
-			$reg = '~^'. $input .'(.*)$~';
-			$result = preg_grep($reg, $lines);
-			$json = [];
-			$i = 0;
-			foreach ($result as &$value) {
-				// Limit to 100 as to not slowdown browser too much
-				if (count($json) <= 100) {
-					$json[] = ["name"=>$value];
-				}
-			}
-		} else {
-			$src = 'assets/resources/wwff.txt';
-			if (copy($src, $file)) {
-				$this->get_wwff();
-			} else {
-				log_message('error', 'Failed to copy source file ('.$src.') to new location. Check if this path has the right permission: '.$file);
-			}
-		}
+		$this->load->model('wwff');
+		$json = $this->wwff->search_refs($query);
 
 		header('Content-Type: application/json');
 		echo json_encode($json);
 	}
 
 	public function get_pota() {
-		$json = [];
+		session_write_close();
 
 		$query = $this->input->get('query', TRUE) ?? FALSE;
-		$pota = strtoupper($query);
 
-		$file = 'updates/pota.txt';
-
-		if (is_readable($file)) {
-			$lines = file($file, FILE_IGNORE_NEW_LINES);
-			$input = preg_quote($pota, '~');
-			$reg = '~^'. $input .'(.*)$~';
-			$result = preg_grep($reg, $lines);
-			$json = [];
-			$i = 0;
-			foreach ($result as &$value) {
-				// Limit to 100 as to not slowdown browser too much
-				if (count($json) <= 100) {
-					$json[] = ["name"=>$value];
-				}
-			}
-		} else {
-			$src = 'assets/resources/pota.txt';
-			if (copy($src, $file)) {
-				$this->get_pota();
-			} else {
-				log_message('error', 'Failed to copy source file ('.$src.') to new location. Check if this path has the right permission: '.$file);
-			}
-		}
+		$this->load->model('pota');
+		$json = $this->pota->search_refs($query);
 
 		header('Content-Type: application/json');
 		echo json_encode($json);
@@ -750,6 +710,8 @@ class QSO extends CI_Controller {
 	 * Function is used for autocompletion of DOK in the QSO entry form
 	 */
 	public function get_dok() {
+		session_write_close();
+
 		$json = [];
 
 		$query = $this->input->get('query', TRUE) ?? FALSE;
@@ -784,6 +746,8 @@ class QSO extends CI_Controller {
 	}
 
 	public function get_sota_info() {
+		session_write_close();
+
 		$this->load->library('sota');
 
 		$sota = $this->input->post('sota', TRUE);
@@ -793,6 +757,8 @@ class QSO extends CI_Controller {
 	}
 
 	public function get_wwff_info() {
+		session_write_close();
+
 		$this->load->library('wwff');
 
 		$wwff = $this->input->post('wwff', TRUE);
@@ -802,6 +768,8 @@ class QSO extends CI_Controller {
 	}
 
 	public function get_pota_info() {
+		session_write_close();
+
 		$this->load->library('pota');
 
 		$pota = $this->input->post('pota', TRUE);
@@ -811,6 +779,8 @@ class QSO extends CI_Controller {
 	}
 
 	public function get_station_power() {
+		session_write_close();
+
 		$this->load->model('stations');
 		$this->load->library('qra');
 		$stationProfile = $this->input->post('stationProfile', TRUE);
@@ -851,27 +821,43 @@ class QSO extends CI_Controller {
 		echo json_encode($this->config->item('lotw_unsupported_prop_modes'));
 	}
 
-	function check_locator($grid) {
-		$grid = $this->input->post('locator', TRUE);
-		// Allow empty locator
-		if (preg_match('/^$/', $grid)) return true;
-		// Allow 6-digit locator
-		if (preg_match('/^[A-Ra-r]{2}[0-9]{2}[A-Xa-x]{2}$/', $grid)) return true;
-		// Allow 4-digit locator
-		else if (preg_match('/^[A-Ra-r]{2}[0-9]{2}$/', $grid)) return true;
-		// Allow 4-digit grid line
-		else if (preg_match('/^[A-Ra-r]{2}[0-9]{2},[A-Ra-r]{2}[0-9]{2}$/', $grid)) return true;
-		// Allow 4-digit grid corner
-		else if (preg_match('/^[A-Ra-r]{2}[0-9]{2},[A-Ra-r]{2}[0-9]{2},[A-Ra-r]{2}[0-9]{2},[A-Ra-r]{2}[0-9]{2}$/', $grid)) return true;
-		// Allow 2-digit locator
-		else if (preg_match('/^[A-Ra-r]{2}$/', $grid)) return true;
-		// Allow 8-digit locator
-		else if (preg_match('/^[A-Ra-r]{2}[0-9]{2}[A-Xa-x]{2}[0-9]{2}$/', $grid)) return true;
-		// Allow 10-digit locator
-		else if (preg_match('/^[A-Ra-r]{2}[0-9]{2}[A-Xa-x]{2}[0-9]{2}[A-Xa-x]{2}$/', $grid)) return true;
-		else {
-			$this->form_validation->set_message('check_locator', 'Please check value for grid locator ('.strtoupper($grid).').');
-			return false;
+	function check_locator($grid, $type) {
+		switch ($type) {
+		case 'grid':
+			$grid = $this->input->post('locator', TRUE);
+			if (!$this->load->is_loaded('Qra')) {
+				$this->load->library('Qra');
+			}
+			if ($this->qra->validate_grid($grid, 'grid')) {
+				return true;
+			} else {
+				$this->form_validation->set_message('check_locator', sprintf(__("Please check value for gridsquare (%s)"), strtoupper($grid)));
+				return false;
+			}
+			break;
+		case 'vucc':
+			$grid = $this->input->post('vucc_grids', TRUE);
+			if (!$this->load->is_loaded('Qra')) {
+				$this->load->library('Qra');
+			}
+			if ($this->qra->validate_grid($grid, 'vucc')) {
+				return true;
+			} else {
+				$this->form_validation->set_message('check_locator', sprintf(__("Please check value for VUCC gridsquare (%s)"), strtoupper($grid)));
+				return false;
+			}
+			break;
+		default:
+			if (!$this->load->is_loaded('Qra')) {
+				$this->load->library('Qra');
+			}
+			if ($this->qra->validate_grid($grid, 'any')) {
+				return true;
+			} else {
+				$this->form_validation->set_message('check_locator', sprintf(__("Please check value for gridsquare (%s)"), strtoupper($grid)));
+				return false;
+			}
+			break;
 		}
 	}
 
@@ -884,7 +870,6 @@ class QSO extends CI_Controller {
 
 	function log_qso() {
 		// Check if users logged in
-		$this->load->model('user_model');
 		if ($this->user_model->validate_session() == 0) {
 			// user is not logged in
 			$this->session->set_flashdata('warning', __("You have to be logged in to access this URL."));

@@ -11,7 +11,6 @@ class Qslpostcard extends CI_Controller {
     public function __construct() {
         parent::__construct();
 
-		$this->load->model('user_model');
 		if (!$this->user_model->authorize(2)) {
 			$this->session->set_flashdata('error', __("You're not allowed to do that!"));
 			redirect('dashboard');
@@ -53,6 +52,9 @@ class Qslpostcard extends CI_Controller {
         $config['max_size']      = Qslpostcard_model::MAX_BG_IMAGE_BYTES / 1024; // KB; same cap as render-side
 
         $this->load->library('upload_guard');
+
+        // Align the filename's extension with the file's real content (JPEGs named .png etc.)
+        $this->upload_guard->normalize_image_ext('preview_image');
 
         if (!$this->upload_guard->has_free_space($config['upload_path'], $_FILES['preview_image']['size'])) {
             $this->output
@@ -277,7 +279,12 @@ class Qslpostcard extends CI_Controller {
     }
 
     public function printqueue_selected() {
+        // Accept the ids as a JSON string (one POST var, immune to
+        // max_input_vars) or as a classic selected_qsos[] array.
         $selected_ids = $this->input->post('selected_qsos');
+        if (is_string($selected_ids)) {
+            $selected_ids = xss_clean(json_decode($selected_ids, true));
+        }
 
         if (!is_array($selected_ids) || empty($selected_ids)) {
             show_error(__("No QSOs were selected"));
@@ -307,7 +314,12 @@ class Qslpostcard extends CI_Controller {
                 return;
             }
 
+            // Accept the ids as a JSON string (one POST var, immune to
+            // max_input_vars) or as a classic selected_ids[] array.
             $selected_ids = $this->input->post('selected_ids');
+            if (is_string($selected_ids)) {
+                $selected_ids = xss_clean(json_decode($selected_ids, true));
+            }
             if (!is_array($selected_ids) || empty($selected_ids)) {
                 show_error(__("No selected QSO IDs were provided"));
                 return;
@@ -363,6 +375,34 @@ class Qslpostcard extends CI_Controller {
 		$this->output
 			->set_content_type('application/json')
 			->set_output(json_encode(['ok' => true]));
+	}
+
+	function copy_template() {
+		$raw = $this->input->raw_input_stream;
+		$payload = json_decode($raw, true);
+
+		if (!is_array($payload) || empty($payload['id'])) {
+			return $this->_json_error('Invalid payload');
+		}
+
+		$id = (int)$payload['id'];
+
+		$newId = $this->Qslpostcard_model->copy_template($id);
+		if (!$newId) {
+			return $this->_json_error('Template not found', 404);
+		}
+
+		// Echo the generated name back so the frontend can label the new dropdown
+		// option without an extra round-trip.
+		$tpl = $this->Qslpostcard_model->get_template($newId);
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode([
+				'ok'   => true,
+				'id'   => $newId,
+				'name' => $tpl['name'] ?? '',
+			]));
 	}
 
 	private function stream_pdf(string $pdfPath, string $variant, array $tpl, bool $download = false): void

@@ -10,7 +10,6 @@ class Contest_admin extends CI_Controller {
 	function __construct() {
 		parent::__construct();
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 	}
 
@@ -74,7 +73,7 @@ class Contest_admin extends CI_Controller {
 		{
 			$this->Contest_admin_model->edit($item_id_clean);
 
-			$data['notice'] = "Contest ".$this->security->xss_clean($this->input->post('name', true))." Updated";
+			$data['notice'] = sprintf(__("Contest %s updated"), $this->input->post('name', true));
 
 			redirect('contest_admin/add');
 		}

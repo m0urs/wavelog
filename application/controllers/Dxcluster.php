@@ -9,13 +9,14 @@ class Dxcluster extends CI_Controller {
 	function __construct()
 	{
 		parent::__construct();
-		$this->load->is_loaded('user_model') ?: $this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		$this->load->is_loaded('dxcluster_model') ?: $this->load->model('dxcluster_model');
 	}
 
 
 	public function spots($band, $age = '', $de = '', $mode = 'All') {
+		session_write_close();
+
 		// Sanitize inputs
 		$band = $this->security->xss_clean($band);
 		$mode = $this->security->xss_clean($mode);

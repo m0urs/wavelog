@@ -6,7 +6,6 @@ class User extends CI_Controller {
 
 	public function index()
 	{
-		$this->load->model('user_model');
 		$this->load->library('form_validation');
 
 		if (!$this->load->is_loaded('encryption')) {
@@ -58,7 +57,6 @@ class User extends CI_Controller {
 
 	public function actions_modal() {
 
-		$this->load->model('user_model');
 		$this->load->library('encryption');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
@@ -107,7 +105,6 @@ class User extends CI_Controller {
 	}
 
 	public function unlock($uid) {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		if ($this->user_model->exists_by_id($uid)) {
@@ -125,7 +122,6 @@ class User extends CI_Controller {
 	}
 
 	public function convert() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$user_id = $this->input->post('user_id', true) ?? '';
@@ -149,7 +145,6 @@ class User extends CI_Controller {
 	}
 
 	function add() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$data['existing_languages'] = $this->config->item('languages');
@@ -329,6 +324,7 @@ class User extends CI_Controller {
 				$this->input->post('on_air_widget_enabled'),
 				$this->input->post('on_air_widget_display_last_seen'),
 				$this->input->post('on_air_widget_show_only_most_recent_radio'),
+				$this->input->post('on_air_widget_display_radio_name'),
 				$this->input->post('qso_widget_display_qso_time'),
 				$this->input->post('user_dashboard_banner') ?? 'Y',
 				$this->input->post('user_dashboard_solar') ?? 'Y',
@@ -337,8 +333,9 @@ class User extends CI_Controller {
 				$this->input->post('oqrs_grouped_search_show_station_name') ?? 'off',
 				$this->input->post('oqrs_auto_matching') ?? 'on',
 				$this->input->post('oqrs_direct_auto_matching') ?? 'on',
-        			$this->input->post('user_dxwaterfall_enable') ?? 'N',
+				$this->input->post('user_dxwaterfall_enable') ?? 'N',
 				$this->input->post('user_qso_show_map') ?? 1,
+				$this->input->post('last_lotw_upload_widget_enabled'),
 				$this->input->post('clubstation') == '1' ? true : false)
 			) {
 				// Check for errors
@@ -408,7 +405,6 @@ class User extends CI_Controller {
 	}
 
 	function edit() {
-		$this->load->model('user_model');
 		if ( ($this->session->userdata('user_id') == '') || ((!$this->user_model->authorize(99)) && ($this->session->userdata('user_id') != $this->uri->segment(3))) ) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		if (!clubaccess_check(9)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		$query = $this->user_model->get_by_id($this->uri->segment(3));
@@ -471,6 +467,39 @@ class User extends CI_Controller {
 		$data['sso_claim_config'] = $this->config->item('auth_headers_claim_config', 'sso') ?: [];
 
 		$data['page_title'] = __("Edit User");
+
+		// [MAP Custom] GET user options //
+		$options_object = $this->user_options_model->get_options('map_custom')->result();
+		if (count($options_object)>0) {
+			foreach ($options_object as $row) {
+				if ($row->option_name=='icon') {
+					$option_value = json_decode($row->option_value,true);
+					foreach ($option_value as $ktype => $vtype) {
+						if($this->input->post('user_map_'.$row->option_key.'_icon')) {
+							$data['user_map_'.$row->option_key.'_'.$ktype] = $this->input->post('user_map_'.$row->option_key.'_'.$ktype, true);
+						} else {
+							$data['user_map_'.$row->option_key.'_'.$ktype] = $vtype;
+						}
+					}
+				} else {
+					$data['user_map_'.$row->option_name.'_'.$row->option_key] = $row->option_value;
+				}
+			}
+		} else {
+			$data['user_map_qso_icon'] = "fas fa-dot-circle";
+			$data['user_map_qso_color'] = "#FF0000";
+			$data['user_map_station_icon'] = "0";
+			$data['user_map_station_color'] = "#0000FF";
+			$data['user_map_qsoconfirm_icon'] = "0";
+			$data['user_map_qsoconfirm_color'] = "#00AA00";
+			$data['user_map_unworked_color'] = "#FF0000";
+			$data['user_map_gridsquare_show'] = "0";
+			$data['user_map_tile_style'] = "map-follow";
+		}
+		$data['map_icon_select'] = array(
+			'station'=>array('0', 'fas fa-home', 'fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle' ),
+			'qso'=>array('fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle' ),
+			'qsoconfirm'=>array('0', 'fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle', 'fas fa-check-circle' ));
 
 		if ($this->form_validation->run() == FALSE)
 		{
@@ -968,39 +997,6 @@ class User extends CI_Controller {
 				$data['user_stations_active_log_only'] = (count($dkey_opt)>0) ? $dkey_opt[0]->option_value : false;
 			}
 
-			// [MAP Custom] GET user options //
-			$options_object = $this->user_options_model->get_options('map_custom')->result();
-			if (count($options_object)>0) {
-				foreach ($options_object as $row) {
-					if ($row->option_name=='icon') {
-						$option_value = json_decode($row->option_value,true);
-						foreach ($option_value as $ktype => $vtype) {
-							if($this->input->post('user_map_'.$row->option_key.'_icon')) {
-								$data['user_map_'.$row->option_key.'_'.$ktype] = $this->input->post('user_map_'.$row->option_key.'_'.$ktype, true);
-							} else {
-								$data['user_map_'.$row->option_key.'_'.$ktype] = $vtype;
-							}
-						}
-					} else {
-						$data['user_map_'.$row->option_name.'_'.$row->option_key] = $row->option_value;
-					}
-				}
-			} else {
-				$data['user_map_qso_icon'] = "fas fa-dot-circle";
-				$data['user_map_qso_color'] = "#FF0000";
-				$data['user_map_station_icon'] = "0";
-				$data['user_map_station_color'] = "#0000FF";
-				$data['user_map_qsoconfirm_icon'] = "0";
-				$data['user_map_qsoconfirm_color'] = "#00AA00";
-				$data['user_map_unworked_color'] = "#FF0000";
-				$data['user_map_gridsquare_show'] = "0";
-				$data['user_map_tile_style'] = "map-follow";
-			}
-			$data['map_icon_select'] = array(
-				'station'=>array('0', 'fas fa-home', 'fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle' ),
-				'qso'=>array('fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle' ),
-				'qsoconfirm'=>array('0', 'fas fa-broadcast-tower', 'fas fa-user', 'fas fa-dot-circle', 'fas fa-check-circle' ));
-
 			$data['user_locations_quickswitch'] = ($this->user_options_model->get_options('header_menu', array('option_name'=>'locations_quickswitch'), $this->uri->segment(3))->row()->option_value ?? 'false');
 			$data['user_utc_headermenu'] = ($this->user_options_model->get_options('header_menu', array('option_name'=>'utc_headermenu'), $this->uri->segment(3))->row()->option_value ?? 'false');
 			$data['user_quick_theme_switcher'] = ($this->user_options_model->get_options('header_menu', array('option_name'=>'quick_theme_switcher'), $this->uri->segment(3))->row()->option_value ?? 'true');
@@ -1010,8 +1006,11 @@ class User extends CI_Controller {
 			$data['on_air_widget_enabled'] = ($this->user_options_model->get_options('widget', array('option_name'=>'on_air', 'option_key' => 'enabled'), $this->uri->segment(3))->row()->option_value ?? "false");
 			$data['on_air_widget_display_last_seen'] = ($this->user_options_model->get_options('widget', array('option_name'=>'on_air', 'option_key' => 'display_last_seen'), $this->uri->segment(3))->row()->option_value ?? "false");
 			$data['on_air_widget_show_only_most_recent_radio'] = ($this->user_options_model->get_options('widget', array('option_name'=>'on_air', 'option_key' => 'display_only_most_recent_radio'), $this->uri->segment(3))->row()->option_value ?? "true");
+			$data['on_air_widget_display_radio_name'] = ($this->user_options_model->get_options('widget', array('option_name'=>'on_air', 'option_key' => 'display_radio_name'), $this->uri->segment(3))->row()->option_value ?? "false");
 			$data['on_air_widget_url'] = site_url('widgets/on_air/' . $q->slug);
 			$data['qso_widget_display_qso_time'] = ($this->user_options_model->get_options('widget', array('option_name'=>'qso', 'option_key' => 'display_qso_time'), $this->uri->segment(3))->row()->option_value ?? "false");
+			$data['last_lotw_upload_widget_enabled'] = ($this->user_options_model->get_options('widget', array('option_name'=>'last_lotw_upload', 'option_key' => 'enabled'), $this->uri->segment(3))->row()->option_value ?? "false");
+			$data['last_lotw_upload_widget_url'] = site_url('widgets/lotw_upload/' . $q->slug);
 			$data['csrf_token'] = $this->paths->csrf_generate($this->router->class.'_'.$this->router->method);
 
 			$this->load->view('interface_assets/header', $data);
@@ -1024,8 +1023,6 @@ class User extends CI_Controller {
 				redirect('user/edit/'.$this->uri->segment(3));
 				return;
 			}
-
-			unset($data);
 
 			// SSO / OIDC: Override submitted values for fields managed by the IdP
 			$post_data = $this->input->post();
@@ -1063,27 +1060,53 @@ class User extends CI_Controller {
 
 					$user_id = $this->input->post('id', true);
 
-					// [MAP Custom] ADD to user options //
-					$array_icon = array('station','qso','qsoconfirm', 'unworked');
-					foreach ($array_icon as $icon) {
-						$data_options['user_map_'.$icon.'_icon'] = xss_clean($this->input->post('user_map_'.$icon.'_icon', true));
-						$data_options['user_map_'.$icon.'_color'] = xss_clean($this->input->post('user_map_'.$icon.'_color', true));
-					}
-					if (!empty($data_options['user_map_qso_icon'])) {
-						foreach ($array_icon as $icon) {
-							$json = json_encode(array('icon'=>$data_options['user_map_'.$icon.'_icon'], 'color'=>$data_options['user_map_'.$icon.'_color']));
-							$this->user_options_model->set_option('map_custom','icon',array($icon=>$json), $user_id);
-						}
-						$this->user_options_model->set_option('map_custom','gridsquare',array('show'=>xss_clean($this->input->post('user_map_gridsquare_show', true))), $user_id);
-						$this->user_options_model->set_option('map_custom','tile',array('style' => xss_clean($this->input->post('user_map_tile_style', true))),$user_id);
+				// [MAP Custom] ADD to user options //
+				$array_icon = array('station','qso','qsoconfirm', 'unworked');
+				$_icon_allow = $data['map_icon_select'];
+				$_icon_defaults = array(
+					'station'    => '0',
+					'qso'        => 'fas fa-dot-circle',
+					'qsoconfirm' => '0',
+					'unworked'   => '0',
+				);
+				$_color_defaults = array(
+					'station'    => '#0000FF',
+					'qso'        => '#E5A50A',
+					'qsoconfirm' => '#90EE90',
+					'unworked'   => '#CC372D',
+				);
+				$_hex_re = '/^#[0-9a-fA-F]{6}$/';
+				foreach ($array_icon as $icon) {
+					$_raw_icon  = $this->input->post('user_map_'.$icon.'_icon', true);
+					$_raw_color = $this->input->post('user_map_'.$icon.'_color', true);
+					if (isset($_icon_allow[$icon]) && is_array($_icon_allow[$icon])) {
+						$_icon = in_array($_raw_icon, $_icon_allow[$icon], true) ? $_raw_icon : $_icon_defaults[$icon];
 					} else {
-						$this->user_options_model->del_option('map_custom','icon', null, $user_id);
-						$this->user_options_model->del_option('map_custom','gridsquare', null, $user_id);
-						$this->user_options_model->del_option('map_custom','tile', null, $user_id);
+						$_icon = $_icon_defaults[$icon];
 					}
-					$this->user_options_model->set_option('header_menu', 'locations_quickswitch', array('boolean'=>xss_clean($this->input->post('user_locations_quickswitch', true))), $user_id);
-					$this->user_options_model->set_option('header_menu', 'utc_headermenu', array('boolean'=>xss_clean($this->input->post('user_utc_headermenu', true))), $user_id);
-					$this->user_options_model->set_option('header_menu', 'quick_theme_switcher', array('boolean'=>xss_clean($this->input->post('user_quick_theme_switcher', true))), $user_id);
+					$_color = preg_match($_hex_re, $_raw_color ?? '') ? $_raw_color : $_color_defaults[$icon];
+					$data_options['user_map_'.$icon.'_icon']  = $_icon;
+					$data_options['user_map_'.$icon.'_color'] = $_color;
+				}
+				if (!empty($data_options['user_map_qso_icon'])) {
+					foreach ($array_icon as $icon) {
+						$json = json_encode(array('icon'=>$data_options['user_map_'.$icon.'_icon'], 'color'=>$data_options['user_map_'.$icon.'_color']));
+						$this->user_options_model->set_option('map_custom','icon',array($icon=>$json), $user_id);
+					}
+					$_gridshow = $this->input->post('user_map_gridsquare_show', true);
+					$_gridshow = ($_gridshow === '1' || $_gridshow === 1) ? '1' : '0';
+					$this->user_options_model->set_option('map_custom','gridsquare',array('show'=>$_gridshow), $user_id);
+					$_tile = $this->input->post('user_map_tile_style', true);
+					$_tile = array_key_exists($_tile, map_style_options()) ? $_tile : 'map-follow';
+					$this->user_options_model->set_option('map_custom','tile',array('style' => $_tile),$user_id);
+				} else {
+					$this->user_options_model->del_option('map_custom','icon', null, $user_id);
+					$this->user_options_model->del_option('map_custom','gridsquare', null, $user_id);
+					$this->user_options_model->del_option('map_custom','tile', null, $user_id);
+				}
+					$this->user_options_model->set_option('header_menu', 'locations_quickswitch', array('boolean'=>$this->input->post('user_locations_quickswitch', true)), $user_id);
+					$this->user_options_model->set_option('header_menu', 'utc_headermenu', array('boolean'=>$this->input->post('user_utc_headermenu', true)), $user_id);
+					$this->user_options_model->set_option('header_menu', 'quick_theme_switcher', array('boolean'=>$this->input->post('user_quick_theme_switcher', true)), $user_id);
 
 					$this->user_options_model->set_option('oqrs', 'global_oqrs_text', array('text'=>$this->input->post('global_oqrs_text', true)), $user_id);
 					$this->user_options_model->set_option('oqrs', 'oqrs_grouped_search', array('boolean'=>$this->input->post('oqrs_grouped_search', true)), $user_id);
@@ -1150,6 +1173,7 @@ class User extends CI_Controller {
 			$data['on_air_widget_enabled'] = $this->input->post('on_air_widget_enabled', true);
 			$data['on_air_widget_display_last_seen'] = $this->input->post('on_air_widget_display_last_seen', true);
 			$data['on_air_widget_show_only_most_recent_radio'] = $this->input->post('on_air_widget_show_only_most_recent_radio', true);
+			$data['on_air_widget_display_radio_name'] = $this->input->post('on_air_widget_display_radio_name', true);
 			$data['qso_widget_display_qso_time'] = $this->input->post('qso_widget_display_qso_time', true);
 			$data['global_oqrs_text'] = $this->input->post('global_oqrs_text', true);
 			$data['oqrs_grouped_search'] = $this->input->post('oqrs_grouped_search', true);
@@ -1158,14 +1182,14 @@ class User extends CI_Controller {
 			$data['oqrs_direct_auto_matching'] = $this->input->post('oqrs_direct_auto_matching', true);
 			$data['oqrs_delivery_method'] = $this->input->post('oqrs_delivery_method', true);
 			$data['user_qso_db_search_priority'] = $this->input->post('user_qso_db_search_priority', true);
+			$data['last_lotw_upload_widget_enabled'] = $this->input->post('last_lotw_upload_widget_enabled', true);
 
-			$this->load->view('user/edit');
-			$this->load->view('interface_assets/footer');
+			$this->load->view('user/edit', $data);
+			$this->load->view('interface_assets/footer', $footerData);
 		}
 	}
 
 	function profile() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		$query = $this->user_model->get_by_id($this->session->userdata('user_id'));
 		$q = $query->row();
@@ -1184,7 +1208,6 @@ class User extends CI_Controller {
 	}
 
 	function delete() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		$query = $this->user_model->get_by_id($this->uri->segment(3));
 
@@ -1229,7 +1252,6 @@ class User extends CI_Controller {
 	public function theme_switch() {
 		header('Content-Type: application/json');
 
-		$this->load->model('user_model');
 
 		if (!$this->user_model->authorize(2)) {
 			echo json_encode(array('status' => 'error', 'message' => __("You're not allowed to do that!")));
@@ -1290,7 +1312,6 @@ class User extends CI_Controller {
 			$this->session->set_flashdata('success', __("Congrats! Wavelog was successfully installed. You can now login for the first time."));
 		}
 
-		$this->load->model('user_model');
 		$query = $this->user_model->get($this->input->post('user_name', true));
 
 		$this->load->library('form_validation');
@@ -1336,7 +1357,7 @@ class User extends CI_Controller {
 				if ($this->user_model->check_keep_hash($a, $b)) {
 
 					// check if maintenance mode is active or the user is an admin
-					if (ENVIRONMENT != 'maintenance' || $user_type == 99) {
+					if (!MAINTENANCE_MODE || $user_type == 99) {
 
 						// if everything is fine we can log in the user
 						$this->user_model->update_session($uid);
@@ -1370,7 +1391,7 @@ class User extends CI_Controller {
 				}
 			} catch (Exception $e) {
 				// Something went wrong with the cookie
-				log_message('error', "User ID: [".$uid."]; 'Keep Login' failed. Cookie deleted. Message: ".$e);
+				log_message('error', "User ID: [".($uid ?? 'unknown')."]; 'Keep Login' failed. Cookie deleted. Message: ".$e);
 
 				// Delete keep_login cookie
 				$this->input->set_cookie('keep_login', '', -3600, '');
@@ -1437,7 +1458,7 @@ class User extends CI_Controller {
 				$this->session->set_flashdata('warning', __("Your account is locked, due to too many failed login-attempts. Please reset your password."));
 				redirect('user/login');
 			} else {
-				if(ENVIRONMENT == 'maintenance') {
+				if(MAINTENANCE_MODE) {
 					$this->session->set_flashdata('notice', __("Sorry. This instance is currently in maintenance mode. If this message appears unexpectedly or keeps showing up, please contact an administrator. Only administrators are currently allowed to log in."));
 					redirect('user/login');
 				} else {
@@ -1451,7 +1472,6 @@ class User extends CI_Controller {
 	}
 
 	function logout($custom_message = null, $hard_logout = true, $enable_idp = true) {
-		$this->load->model('user_model');
 
 		$user_name = $this->session->userdata('user_name');
 
@@ -1486,7 +1506,6 @@ class User extends CI_Controller {
 	 * Form Data to create the first station location
 	 */
 	function firstlogin_wizard_form() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->library('form_validation');
@@ -1558,7 +1577,6 @@ class User extends CI_Controller {
 			else
 			{
 				// Check email address exists
-				$this->load->model('user_model');
 				$email = $this->input->post('email', TRUE);
 
 				$check_email = $this->user_model->check_email_address($email);
@@ -1625,7 +1643,6 @@ class User extends CI_Controller {
 		if ($this->input->is_ajax_request()) { // just additional, to make sure request is from ajax
 			if ($this->input->post('submit_allowed')) {
 
-				$this->load->model('user_model');
 
 				if(!$this->user_model->authorize(99)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
@@ -1645,7 +1662,6 @@ class User extends CI_Controller {
 				else
 				{
 					// Check email address exists
-					$this->load->model('user_model');
 
 					$check_email = $this->user_model->check_email_address($data->user_email);
 
@@ -1726,7 +1742,6 @@ class User extends CI_Controller {
 			else
 			{
 				// Lets reset the password!
-				$this->load->model('user_model');
 
 				$this->user_model->reset_password($this->input->post('password', true), $reset_code);
 				$this->session->set_flashdata('notice', 'Password Reset.');
@@ -1795,9 +1810,6 @@ class User extends CI_Controller {
 		if (!$this->load->is_loaded('encryption')) {
 			$this->load->library('encryption');
 		}
-
-		// Load the user model
-		$this->load->model('user_model');
 
 		// Precheck: If the encryption key is still default, we can't impersonate another user for security reasons
 		if ($this->config->item('encryption_key') == 'flossie1234555541') {
@@ -1892,16 +1904,12 @@ class User extends CI_Controller {
 	}
 
 	public function stop_impersonate_modal() {
-		// Load the user model
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->view('user/modals/stop_impersonate_modal');
 	}
 
 	public function stop_impersonate() {
-		// Load the user model
-		$this->load->model('user_model');
 
 		// there is no source_uid, there is probably something fishy going on. So we clear the session at this point
 		$source_uid = $this->session->userdata('source_uid') ?? false;

@@ -7,7 +7,6 @@ class QSLPrint extends CI_Controller {
 		parent::__construct();
 		$this->load->helper(array('form', 'url'));
 
-		$this->load->model('user_model');
 
 		// Check if users logged in
 
@@ -20,7 +19,6 @@ class QSLPrint extends CI_Controller {
 	public function index($station_id = 'All')
 	{
 		// Check if users logged in
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2) || !clubaccess_check(9)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->model('stations');
@@ -155,7 +153,6 @@ class QSLPrint extends CI_Controller {
 		}
 
 		$this->load->model('qslprint_model');
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 			// Update Logbook to Mark Paper Card Sent
@@ -205,6 +202,24 @@ class QSLPrint extends CI_Controller {
 
 		$data['result'] = $this->qslprint_model->show_oqrs($id);
 		$this->load->view('oqrs/showoqrs', $data);
+	}
+
+	public function printdialog() {
+		$data['type'] = $this->input->post('printType', true);
+		$data['id_list'] = $this->input->post('id_list', true);
+		$data['printAll'] = $this->input->post('printAll', true);
+
+		if ($data['type'] === 'label') {
+			// Offer Label Designer templates as an alternative to the classic
+			// text layout in the dialog.
+			$this->load->model('Labeldesigner_model');
+			$data['label_templates'] = $this->Labeldesigner_model->list_templates();
+			$this->load->view('qslprint/printlabel', $data);
+		} else {
+			$this->load->model('Qslpostcard_model');
+			$data['templates'] = $this->Qslpostcard_model->list_templates();
+			$this->load->view('qslprint/printqsl', $data);
+		}
 	}
 
 }

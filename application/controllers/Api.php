@@ -30,13 +30,18 @@ class API extends CI_Controller {
 	}
 
 	function index() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->model('api_model');
+		$this->load->model('api_v2_model');
 		$this->load->library('form_validation');
 
 		$data['api_keys'] = $this->api_model->keys();
+		$data['api_tokens'] = $this->api_v2_model->get_tokens_for_user();
+		$data['token_scopes'] = Api_v2_model::grantable_scope_registry();
+		$data['token_presets'] = Api_v2_model::preset_registry();
+		// One-time reveal: the plaintext token survives exactly one redirect.
+		$data['new_api_token'] = $this->session->flashdata('new_api_token');
 		$data['clubmode'] = $this->session->userdata('clubstation') == 1 ? true : false;
 		$data['page_title'] = __("API");
 
@@ -73,7 +78,6 @@ class API extends CI_Controller {
 	}
 
 	function edit($key) {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->model('api_model');
@@ -91,7 +95,7 @@ class API extends CI_Controller {
 			$data['page_title'] = __("Edit API Description");
 
 			$this->load->view('interface_assets/header', $data);
-			$this->load->view('api/description');
+			$this->load->view('api/components/edit_legacy');
 			$this->load->view('interface_assets/footer');
 		} else {
 			// Success!
@@ -113,7 +117,6 @@ class API extends CI_Controller {
 			return;
 		}
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$rights = $this->input->post('rights', TRUE);
@@ -148,7 +151,6 @@ class API extends CI_Controller {
 			return;
 		}
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(3)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$key = $this->input->post('key', TRUE);
@@ -192,7 +194,7 @@ class API extends CI_Controller {
 
 		if ($apiKeyResponse == 0) {
 			http_response_code(401);
-			log_message("Debug",'API Call 401. Invalid API Key: '.($obj['key'] ?? 'N/A'));
+			log_message("Debug",'API Call 401. Invalid API Key: '.($key ?? 'N/A'));
 			echo json_encode(['status' => 'error', 'reason' => "missing or wrong api key"]);
 			die();
 		}
@@ -246,7 +248,7 @@ class API extends CI_Controller {
 			$this->output->set_status_header(500)->set_content_type('application/json')->set_output(json_encode(['status' => 'error', 'message' => 'Processing error: ' . $e->getMessage()]));
 		}
 		$this->load->model('stationsetup_model');
-		$imported = $this->stationsetup_model->import_locations_parse($locations,$userid);
+		$imported = $this->stationsetup_model->import_locations_parse($locations ?? [], $userid);
 		if (($imported[0] ?? '0') == 'limit') {
 			$this->output->set_status_header(201)->set_content_type('application/json')->set_output(json_encode(['status' => 'success', 'message' => ($imported[1] ?? '0')." locations imported. Maximum limit of 1000 locations reached."]));
 		} else {
@@ -397,7 +399,6 @@ class API extends CI_Controller {
 		$real_operator = null;	// real_operator is only filled if its a clubstation and the used key is created by an OP. otherwise its null
 		if ($this->config->item('special_callsign')) {
 			if ($userid != $created_by) {
-				$this->load->model('user_model');
 				$real_operator = $this->user_model->get_by_id($created_by)->row()->user_callsign;
 			} else {
 				$real_operator = null;
@@ -588,7 +589,7 @@ class API extends CI_Controller {
 				return;
 			}
 			$requested_fields = array_map('strtoupper', $obj['fields']);
-			$valid_adif_fields = ['ADDRESS','AGE','A_INDEX','ANT_AZ','ANT_EL','ANT_PATH','ARRL_SECT','AWARD_GRANTED','AWARD_SUBMITTED','BAND','BAND_RX','BIOGRAPHY','CALL','CHECK','CLASS','CLUBLOG_QSO_UPLOAD_STATUS','CNTY','COMMENT','CONT','CONTACTED_OP','CONTEST_ID','COUNTRY','CQZ','CREDIT_GRANTED','CREDIT_SUBMITTED','DARC_DOK','DISTANCE','DXCC','EMAIL','EQ_CALL','EQSL_QSL_RCVD','EQSL_QSL_SENT','EQSL_STATUS','EQSL_AG','FISTS','FISTS_CC','FORCE_INIT','GRIDSQUARE','HEADING','IOTA','ITUZ','K_INDEX','LAT','LON','LOTW_QSL_RCVD','LOTW_QSL_SENT','LOTW_STATUS','MAX_BURSTS','MODE','MS_SHOWER','NAME','NOTES','NR_BURSTS','NR_PINGS','OPERATOR','OWNER_CALLSIGN','PFX','PRECEDENCE','PROP_MODE','PUBLIC_KEY','HRDLOG_QSO_UPLOAD_STATUS','QRZCOM_QSO_UPLOAD_STATUS','QSLMSG','QSL_RCVD','QSL_RCVD_VIA','QSL_SENT','QSL_SENT_VIA','QSL_VIA','QSO_COMPLETE','QSO_RANDOM','QTH','REGION','RIG','RST_RCVD','RST_SENT','RX_PWR','SAT_MODE','SAT_NAME','SFI','SILENT_KEY','SKCC','SOTA_REF','WWFF_REF','POTA_REF','SRX','SRX_STRING','STATE','STX','STX_STRING','SUBMODE','SWL','TEN_TEN','TX_PWR','UKSMG','USACA_COUNTIES','VUCC_GRIDS','WEB','CNTY_ALT','MY_CNTY_ALT','MY_DARC_DOK','MORSE_KEY_INFO','MORSE_KEY_TYPE','QSLMSG_RCVD','DCL_QSL_RCVD','DCL_QSL_SENT','EQSL_QSLRDATE','EQSL_QSLSDATE','LOTW_QSLRDATE','LOTW_QSLSDATE','QSLRDATE','QSLSDATE','CLUBLOG_QSO_UPLOAD_DATE','HRDLOG_QSO_UPLOAD_DATE','QRZCOM_QSO_UPLOAD_DATE','DCL_QSLRDATE','DCL_QSLSDATE','FREQ','FREQ_RX','QSO_DATE','TIME_ON','QSO_DATE_OFF','TIME_OFF','STATION_CALLSIGN','MY_CITY','MY_COUNTRY','MY_DXCC','MY_GRIDSQUARE','MY_VUCC_GRIDS','MY_IOTA','MY_SOTA_REF','MY_WWFF_REF','MY_POTA_REF','MY_CQ_ZONE','MY_ITU_ZONE','MY_STATE','MY_CNTY','MY_SIG','MY_SIG_INFO','SIG','SIG_INFO','MY_ANTENNA','MY_ANTENNA_INTL'];
+			$valid_adif_fields = ['ADDRESS','AGE','A_INDEX','ANT_AZ','ANT_EL','ANT_PATH','ARRL_SECT','AWARD_GRANTED','AWARD_SUBMITTED','BAND','BAND_RX','BIOGRAPHY','CALL','CHECK','CLASS','CLUBLOG_QSO_UPLOAD_STATUS','CNTY','COMMENT','CONT','CONTACTED_OP','CONTEST_ID','COUNTRY','CQZ','CREDIT_GRANTED','CREDIT_SUBMITTED','DARC_DOK','DISTANCE','DXCC','EMAIL','EQ_CALL','EQSL_QSL_RCVD','EQSL_QSL_SENT','EQSL_STATUS','EQSL_AG','FISTS','FISTS_CC','FORCE_INIT','GRIDSQUARE','HEADING','IOTA','ITUZ','K_INDEX','LAT','LON','LOTW_QSL_RCVD','LOTW_QSL_SENT','LOTW_STATUS','MAX_BURSTS','MODE','MS_SHOWER','NAME','NOTES','NR_BURSTS','NR_PINGS','OPERATOR','OWNER_CALLSIGN','PFX','PRECEDENCE','PROP_MODE','PUBLIC_KEY','HRDLOG_QSO_UPLOAD_STATUS','QRZCOM_QSO_UPLOAD_STATUS','QRZCOM_QSO_DOWNLOAD_STATUS','QSLMSG','QSL_RCVD','QSL_RCVD_VIA','QSL_SENT','QSL_SENT_VIA','QSL_VIA','QSO_COMPLETE','QSO_RANDOM','QTH','REGION','RIG','RST_RCVD','RST_SENT','RX_PWR','SAT_MODE','SAT_NAME','SFI','SILENT_KEY','SKCC','SOTA_REF','WWFF_REF','POTA_REF','SRX','SRX_STRING','STATE','STX','STX_STRING','SUBMODE','SWL','TEN_TEN','TX_PWR','UKSMG','USACA_COUNTIES','VUCC_GRIDS','WEB','CNTY_ALT','MY_CNTY_ALT','MY_DARC_DOK','MORSE_KEY_INFO','MORSE_KEY_TYPE','QSLMSG_RCVD','DCL_QSL_RCVD','DCL_QSL_SENT','EQSL_QSLRDATE','EQSL_QSLSDATE','LOTW_QSLRDATE','LOTW_QSLSDATE','QSLRDATE','QSLSDATE','CLUBLOG_QSO_UPLOAD_DATE','HRDLOG_QSO_UPLOAD_DATE','QRZCOM_QSO_UPLOAD_DATE','QRZCOM_QSO_DOWNLOAD_DATE','DCL_QSLRDATE','DCL_QSLSDATE','FREQ','FREQ_RX','QSO_DATE','TIME_ON','QSO_DATE_OFF','TIME_OFF','STATION_CALLSIGN','MY_CITY','MY_COUNTRY','MY_DXCC','MY_GRIDSQUARE','MY_VUCC_GRIDS','MY_IOTA','MY_SOTA_REF','MY_WWFF_REF','MY_POTA_REF','MY_CQ_ZONE','MY_ITU_ZONE','MY_STATE','MY_CNTY','MY_SIG','MY_SIG_INFO','SIG','SIG_INFO','MY_ANTENNA','MY_ANTENNA_INTL'];
 			$invalid_fields = array_diff($requested_fields, $valid_adif_fields);
 			if (!empty($invalid_fields)) {
 				http_response_code(400);
@@ -746,8 +747,8 @@ class API extends CI_Controller {
 	private function _build_qso_array($qso, $fields = null) {
 		$result = [];
 
-		$normalFields = ['ADDRESS','AGE','A_INDEX','ANT_AZ','ANT_EL','ANT_PATH','ARRL_SECT','AWARD_GRANTED','AWARD_SUBMITTED','BAND','BAND_RX','BIOGRAPHY','CALL','CHECK','CLASS','CLUBLOG_QSO_UPLOAD_STATUS','CNTY','COMMENT','CONT','CONTACTED_OP','CONTEST_ID','COUNTRY','CQZ','CREDIT_GRANTED','CREDIT_SUBMITTED','DARC_DOK','DISTANCE','DXCC','EMAIL','EQ_CALL','EQSL_QSL_RCVD','EQSL_QSL_SENT','EQSL_STATUS','EQSL_AG','FISTS','FISTS_CC','FORCE_INIT','GRIDSQUARE','HEADING','IOTA','ITUZ','K_INDEX','LAT','LON','LOTW_QSL_RCVD','LOTW_QSL_SENT','LOTW_STATUS','MAX_BURSTS','MODE','MS_SHOWER','NAME','NOTES','NR_BURSTS','NR_PINGS','OPERATOR','OWNER_CALLSIGN','PFX','PRECEDENCE','PROP_MODE','PUBLIC_KEY','HRDLOG_QSO_UPLOAD_STATUS','QRZCOM_QSO_UPLOAD_STATUS','QSLMSG','QSL_RCVD','QSL_RCVD_VIA','QSL_SENT','QSL_SENT_VIA','QSL_VIA','QSO_COMPLETE','QSO_RANDOM','QTH','REGION','RIG','RST_RCVD','RST_SENT','RX_PWR','SAT_MODE','SAT_NAME','SFI','SILENT_KEY','SKCC','SOTA_REF','WWFF_REF','POTA_REF','SRX','SRX_STRING','STATE','STX','STX_STRING','SUBMODE','SWL','TEN_TEN','TX_PWR','UKSMG','USACA_COUNTIES','VUCC_GRIDS','WEB','CNTY_ALT','MY_CNTY_ALT','MY_DARC_DOK','MORSE_KEY_INFO','MORSE_KEY_TYPE','QSLMSG_RCVD','DCL_QSL_RCVD','DCL_QSL_SENT','MY_ANTENNA','MY_ANTENNA_INTL'];
-		$dateFields   = ['EQSL_QSLRDATE','EQSL_QSLSDATE','LOTW_QSLRDATE','LOTW_QSLSDATE','QSLRDATE','QSLSDATE','CLUBLOG_QSO_UPLOAD_DATE','HRDLOG_QSO_UPLOAD_DATE','QRZCOM_QSO_UPLOAD_DATE','DCL_QSLRDATE','DCL_QSLSDATE'];
+		$normalFields = ['ADDRESS','AGE','A_INDEX','ANT_AZ','ANT_EL','ANT_PATH','ARRL_SECT','AWARD_GRANTED','AWARD_SUBMITTED','BAND','BAND_RX','BIOGRAPHY','CALL','CHECK','CLASS','CLUBLOG_QSO_UPLOAD_STATUS','CNTY','COMMENT','CONT','CONTACTED_OP','CONTEST_ID','COUNTRY','CQZ','CREDIT_GRANTED','CREDIT_SUBMITTED','DARC_DOK','DISTANCE','DXCC','EMAIL','EQ_CALL','EQSL_QSL_RCVD','EQSL_QSL_SENT','EQSL_STATUS','EQSL_AG','FISTS','FISTS_CC','FORCE_INIT','GRIDSQUARE','HEADING','IOTA','ITUZ','K_INDEX','LAT','LON','LOTW_QSL_RCVD','LOTW_QSL_SENT','LOTW_STATUS','MAX_BURSTS','MODE','MS_SHOWER','NAME','NOTES','NR_BURSTS','NR_PINGS','OPERATOR','OWNER_CALLSIGN','PFX','PRECEDENCE','PROP_MODE','PUBLIC_KEY','HRDLOG_QSO_UPLOAD_STATUS','QRZCOM_QSO_UPLOAD_STATUS','QRZCOM_QSO_DOWNLOAD_STATUS','QSLMSG','QSL_RCVD','QSL_RCVD_VIA','QSL_SENT','QSL_SENT_VIA','QSL_VIA','QSO_COMPLETE','QSO_RANDOM','QTH','REGION','RIG','RST_RCVD','RST_SENT','RX_PWR','SAT_MODE','SAT_NAME','SFI','SILENT_KEY','SKCC','SOTA_REF','WWFF_REF','POTA_REF','SRX','SRX_STRING','STATE','STX','STX_STRING','SUBMODE','SWL','TEN_TEN','TX_PWR','UKSMG','USACA_COUNTIES','VUCC_GRIDS','WEB','CNTY_ALT','MY_CNTY_ALT','MY_DARC_DOK','MORSE_KEY_INFO','MORSE_KEY_TYPE','QSLMSG_RCVD','DCL_QSL_RCVD','DCL_QSL_SENT','MY_ANTENNA','MY_ANTENNA_INTL'];
+		$dateFields   = ['EQSL_QSLRDATE','EQSL_QSLSDATE','LOTW_QSLRDATE','LOTW_QSLSDATE','QSLRDATE','QSLSDATE','CLUBLOG_QSO_UPLOAD_DATE','HRDLOG_QSO_UPLOAD_DATE','QRZCOM_QSO_UPLOAD_DATE','QRZCOM_QSO_DOWNLOAD_DATE','DCL_QSLRDATE','DCL_QSLSDATE'];
 
 		foreach ($normalFields as $f) {
 			$result[$f] = $qso->{'COL_' . $f};
@@ -1070,6 +1071,11 @@ class API extends CI_Controller {
 
 		// Decode JSON and store
 		$obj = json_decode(file_get_contents("php://input"), true);
+		if (!is_array($obj)) {
+			http_response_code(400);
+			echo json_encode(['status' => 'failed', 'reason' => "wrong JSON"]);
+			die();
+		}
 
 		// Check rate limit
 		$identifier = isset($obj['key']) ? $obj['key'] : null;
@@ -1093,6 +1099,13 @@ class API extends CI_Controller {
 			die();
 		}
 
+		$invalid_fields = $this->cat->validate_radio_payload($obj);
+		if (!empty($invalid_fields)) {
+			http_response_code(400);
+			echo json_encode(['status' => 'failed', 'reason' => "invalid field(s): " . implode(', ', $invalid_fields)]);
+			die();
+		}
+
 		$this->api_model->update_last_used($obj['key']);
 
 		$user_id = $this->api_model->key_userid($obj['key']);
@@ -1105,36 +1118,9 @@ class API extends CI_Controller {
 			$operator = $user_id;
 		}
 
-		// Special Case: Yaesu Radio's use CW-U and CW-L which aren't official ADIF Modes. Flex 3000 uses CWU and CWL. Icom uses CW-R. We override this here to CW
-		switch (strtoupper($obj['mode'] ?? '')) {
-			case 'CW-U':
-			case 'CW-L':
-			case 'CW-R':
-			case 'CWU':
-			case 'CWL':
-				$obj['mode'] = 'CW';
-				break;
-			case 'RTTY-L':
-			case 'RTTY-U':
-			case 'RTTY-R':
-				$obj['mode'] = 'RTTY';
-				break;
-			case 'USB-D':
-			case 'USB-D1':
-				$obj['mode'] = 'USB';
-				break;
-			case 'LSB-D':
-			case 'LSB-D1':
-				$obj['mode'] = 'LSB';
-				break;
-		}
-
 		// Handle optional cat_url
 		if (isset($obj['cat_url']) && !empty($obj['cat_url'])) {
-			$cat_url = $this->sanitize_cat_url($obj['cat_url']);
-			if ($cat_url !== false) {
-				$obj['cat_url'] = $cat_url;
-			}
+			$obj['cat_url'] = $this->sanitize_cat_url($obj['cat_url']);
 		}
 
 		// Store Result to Database
@@ -1183,7 +1169,6 @@ class API extends CI_Controller {
 		$identifier = isset($raw_input['key']) ? $raw_input['key'] : null;
 		$this->check_rate_limit('private_lookup', $identifier);
 		$user_id='';
-		$this->load->model('user_model');
 		if (!( $this->user_model->authorize($this->config->item('auth_mode') ))) {				// User not authorized?
 			$no_auth=true;
 			$this->load->model('api_model');
@@ -1396,7 +1381,6 @@ class API extends CI_Controller {
 		$this->check_rate_limit('lookup', $identifier);
 
 		$user_id = '';
-		$this->load->model('user_model');
 		if (!( $this->user_model->authorize($this->config->item('auth_mode') ))) {				// User not authorized?
 			$no_auth = true;
 			$this->load->model('api_model');
@@ -1670,6 +1654,7 @@ class API extends CI_Controller {
 
 		$memberlist = $this->club_model->get_club_members($userid);
 		if (!empty($memberlist)) {
+			$members = [];
 			foreach($memberlist as $member) {
 				$members[] = [
 					'callsign' => $member->user_callsign,

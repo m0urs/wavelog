@@ -10,7 +10,7 @@ class Qrz extends CI_Controller {
 	{
 		parent::__construct();
 		
-		if (ENVIRONMENT == 'maintenance' && $this->session->userdata('user_id') == '') {
+		if (MAINTENANCE_MODE && $this->session->userdata('user_id') == '') {
             echo __("Maintenance Mode is active. Try again later.")."\n";
 			redirect('user/login');
 		}
@@ -18,15 +18,15 @@ class Qrz extends CI_Controller {
 
 	// Show frontend if there is one
 	public function index() {
-		$this->config->load('config');
+		redirect('dashboard');
 	}
 
 	/* 
 	 * API Key Status Test
 	 */
-
 	public function qrz_apitest() {
-		$apikey = xss_clean($this->input->post('APIKEY'));
+		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
+		$apikey = trim(xss_clean($this->input->post('APIKEY')));
 		$url = 'https://logbook.qrz.com/api'; // TODO: Move this to database
   
 		$post_data['KEY'] = $apikey;
@@ -42,6 +42,8 @@ class Qrz extends CI_Controller {
 		curl_setopt( $ch, CURLOPT_USERAGENT, 'Wavelog/'.$this->optionslib->get_option('version'));
 		
 		$content = curl_exec($ch);
+		
+		$result = [];
 
 		if ($content){
 			if (stristr($content,'RESULT=OK')) {
@@ -67,6 +69,14 @@ class Qrz extends CI_Controller {
 	 * All QSOs not previously uploaded, will then be uploaded, one at a time
 	 */
 	public function upload() {
+
+		$this->load->helper('cronauth');
+		if (!cronauth_allowed(3)) {
+			// return a 403
+			$this->output->set_status_header(403);
+			exit();
+		}
+
 		$this->setOptions();
 
 		// set the last run in cron table for the correct cron id
@@ -96,7 +106,7 @@ class Qrz extends CI_Controller {
 		}
 	}
 
-	function setOptions() {
+	private function setOptions() {
 		$this->config->load('config');
 		ini_set('memory_limit', '-1');
 		ini_set('display_errors', 1);
@@ -187,7 +197,7 @@ class Qrz extends CI_Controller {
 	/*
 	 * Function marks QSO with given primarykey as uploaded to qrz
 	 */
-	function markqso($primarykey,$state = 'Y') {
+	private function markqso($primarykey,$state = 'Y') {
 		$this->logbook_model->mark_qrz_qsos_sent($primarykey, $state);
 	}
 
@@ -195,7 +205,6 @@ class Qrz extends CI_Controller {
 	 * Used for displaying the uid for manually selecting log for upload to qrz
 	 */
 	public function export() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2) || !clubaccess_check(9)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$this->load->model('stations');
@@ -219,6 +228,7 @@ class Qrz extends CI_Controller {
 	 * Used for ajax-function when selecting log for upload to qrz
 	 */
 	public function upload_station() {
+		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		if (!($this->config->item('disable_manual_qrz'))) {
 			$this->setOptions();
 			$this->load->model('stations');
@@ -282,7 +292,6 @@ class Qrz extends CI_Controller {
 	}
 
 	public function import_qrz() {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$data['page_title'] = __("QRZ QSL Import");
@@ -300,7 +309,12 @@ class Qrz extends CI_Controller {
 	} // end function
 
 	function download($user_id_to_load = null, $lastqrz = null, $show_views = false) {
-		$this->load->model('user_model');
+		$this->load->helper('cronauth');
+		if (!cronauth_allowed(3)) {
+			// return a 403
+			$this->output->set_status_header(403);
+			exit();
+		}
 		$this->load->model('logbook_model');
 
 		$this->load->model('cron_model');
@@ -335,7 +349,6 @@ class Qrz extends CI_Controller {
 			log_message('error', "No station profiles with a QRZ API Key found.");
 		}
 
-		$this->load->model('user_model');
 		if ($this->user_model->authorize(2)) {	// Only Output results if authorized User
 			if(isset($data['tableheaders'])) {
 				if ($data['table'] != '') {
@@ -469,21 +482,21 @@ class Qrz extends CI_Controller {
 					$qrz_status = $this->logbook_model->qrz_update($status[1], $qsl_date, $record['qsl_rcvd']);
 					// log_message('error', $record['call'].": ".$qrz_status);
 					$table .= "<tr>";
-					$table .= "<td>".$record['station_callsign']."</td>";
+					$table .= "<td>".html_escape($record['station_callsign'])."</td>";
 					$table .= "<td>".$time_on."</td>";
-					$table .= "<td><a id=\"view_qrz_qso\" href=\"javascript:displayQso(".$status[1].")\">".$record['call']."</a></td>";
-					$table .= "<td>".($record['mode'] ?? '')."</td>";
-					$table .= "<td>".$record['qsl_rcvd']."</td>";
+					$table .= "<td><a id=\"view_qrz_qso\" href=\"javascript:displayQso(".(int) $status[1].")\">".html_escape($record['call'])."</a></td>";
+					$table .= "<td>".html_escape($record['mode'] ?? '')."</td>";
+					$table .= "<td>".html_escape($record['qsl_rcvd'])."</td>";
 					$table .= "<td>".$qsl_date."</td>";
 					$table .= "<td>QSO Record: ".$status[0]."</td>";
 					$table .= "</tr>";
 				} else {
 					$table .= "<tr>";
-					$table .= "<td>".$record['station_callsign']."</td>";
+					$table .= "<td>".html_escape($record['station_callsign'])."</td>";
 					$table .= "<td>".$time_on."</td>";
-					$table .= "<td>".$record['call']."</td>";
-					$table .= "<td>".($record['mode'] ?? '')."</td>";
-					$table .= "<td>".$record['qsl_rcvd']."</td>";
+					$table .= "<td>".html_escape($record['call'])."</td>";
+					$table .= "<td>".html_escape($record['mode'] ?? '')."</td>";
+					$table .= "<td>".html_escape($record['qsl_rcvd'])."</td>";
 					$table .= "<td>QSO Record: ".$status[0]."</td>";
 					$table .= "</tr>";
 				}

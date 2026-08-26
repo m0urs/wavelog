@@ -6,12 +6,13 @@
 # utkuyalcin <utkyalcn@gmail.com>, 2024.
 # Erkin <ekomeko066@gmail.com>, 2025.
 # "Erkin Mercan (TA4AQG-SP9AQG)" <ekomeko066@gmail.com>, 2025, 2026.
+# metint <metin@tekkalmaz.net>, 2026.
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2026-06-14 15:06+0000\n"
-"PO-Revision-Date: 2026-04-24 05:57+0000\n"
-"Last-Translator: \"Erkin Mercan (TA4AQG-SP9AQG)\" <ekomeko066@gmail.com>\n"
+"POT-Creation-Date: 2026-07-29 15:45+0000\n"
+"PO-Revision-Date: 2026-08-24 22:42+0000\n"
+"Last-Translator: metint <metin@tekkalmaz.net>\n"
 "Language-Team: Turkish <https://translate.wavelog.org/projects/wavelog/"
 "installer/tr/>\n"
 "Language: tr_TR\n"
@@ -19,7 +20,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.16.2\n"
+"X-Generator: Weblate 5.17.1\n"
 
 #: install/includes/install_config/install_lib.php:123
 msgid "not detected"
@@ -115,7 +116,7 @@ msgstr "Portekizce"
 
 #: install/includes/interface_assets/footer.php:81
 msgid "Romanian"
-msgstr ""
+msgstr "Rumence"
 
 #: install/includes/interface_assets/footer.php:82
 msgid "Russian"
@@ -354,7 +355,7 @@ msgstr "Final Wavelog URL'niz"
 
 #: install/index.php:401
 msgid "Optional: Global Callbook Lookup"
-msgstr "İsteğe bağlı: Global Çağrı İşareti Arama"
+msgstr "İsteğe bağlı: Global Çağrı Defteri Sorgulama"
 
 #: install/index.php:401
 #, php-format
@@ -366,6 +367,13 @@ msgid ""
 "an XML subscription for the Call Locator; QRZCALL.EU needs a Data or Extra "
 "subscription on %s. HamQTH does not always provide the locator information."
 msgstr ""
+"Bu yapılandırma isteğe bağlıdır. Çağrı işareti sorgulama, bu kurulumun tüm "
+"kullanıcılarına sunulacaktır. QRZ.com, HamQTH, QRZCQ, QRZ.ru ve QRZCALL.EU "
+"arasında seçim yapabilirsiniz. HamQTH, kullanıcı adı ve şifre olmadan da "
+"çalışır ancak diğer sağlayıcılar için kimlik bilgilerine ihtiyacınız "
+"olacaktır. QRZ.com, Çağrı Bulucu için bir XML aboneliği gerektirir; "
+"QRZCALL.EU ise %s üzerinde Data veya Extra aboneliğine ihtiyaç duyar. HamQTH "
+"her zaman yer belirleyici bilgileri sağlamaz."
 
 #: install/index.php:415 install/index.php:516 install/index.php:968
 msgid "Username"
@@ -390,7 +398,7 @@ msgstr "Şifre %s içeremez ve boş bırakılamaz"
 
 #: install/index.php:433 install/index.php:451
 msgid "Good to know:"
-msgstr "Bİlmenizde fayda var:"
+msgstr "Bilmenizde fayda var:"
 
 #: install/index.php:434
 msgid ""
@@ -402,15 +410,15 @@ msgstr ""
 
 #: install/index.php:442
 msgid "API Token"
-msgstr ""
+msgstr "API Token'ı"
 
 #: install/index.php:452
 msgid "Generate a Personal Access Token at"
-msgstr ""
+msgstr "Kişisel Erişim Token'ı oluşturun"
 
 #: install/index.php:454
 msgid "Requires a Data or Extra subscription."
-msgstr ""
+msgstr "Data veya Ekstra aboneliği gerekiyor."
 
 #: install/index.php:457 install/index.php:462
 msgid "Advanced Settings"
@@ -753,78 +761,78 @@ msgstr "Bu modül olmadan Wavelog Yükleyici çalışmaz!"
 msgid "Please install the required modules and restart the webserver."
 msgstr "Gerekli modülleri yükleyin ve web sunucusunu yeniden başlatın."
 
-#: install/run.php:22
+#: install/run.php:30
 msgid "Installation"
 msgstr "Kurulum"
 
-#: install/run.php:24
+#: install/run.php:32
 msgid "Please wait..."
 msgstr "Lütfen bekleyin..."
 
-#: install/run.php:27
+#: install/run.php:35
 msgid "Copy config.php to application/config/"
 msgstr "Config.php dosyasını application/config/ dizinine kopyalayın"
 
-#: install/run.php:30
+#: install/run.php:38
 msgid "Copy database.php to application/config/"
 msgstr "database.php dosyasını application/config/ dizinine kopyalayın"
 
-#: install/run.php:33
+#: install/run.php:41
 msgid "Creating database tables"
 msgstr "Veritabanı tabloları oluşturuluyor"
 
-#: install/run.php:36
+#: install/run.php:44
 msgid "Running database migrations"
 msgstr "Veritabanı güncellemeleri uygulanıyor"
 
-#: install/run.php:39
+#: install/run.php:47
 msgid "Updating DXCC data"
 msgstr "DXCC bilgileri güncelleniyor"
 
-#: install/run.php:47
+#: install/run.php:55
 msgid "Lock the installer"
 msgstr "Yükleyiciyi kilitle"
 
-#: install/run.php:51
+#: install/run.php:59
 #, php-format
 msgid "All install steps went through. Redirect to user login in %s seconds..."
 msgstr ""
 "Tüm kurulum adımları tamamlandı. %s saniye içinde kullanıcı girişine "
 "yönlendiriliyor..."
 
-#: install/run.php:54
+#: install/run.php:62
 msgid "Done. Go to the user login ->"
 msgstr "Tamamlandı. Kullanıcı girişine gidin ->"
 
-#: install/run.php:58 install/run.php:144
+#: install/run.php:66 install/run.php:168
 msgid "Show detailled debug log"
 msgstr "Ayrıntılı hata ayıklama günlüğünü göster"
 
-#: install/run.php:146
+#: install/run.php:170
 msgid "Hide detailled debug log"
 msgstr "Ayrıntılı hata ayıklama günlüğünü gizle"
 
-#: install/run.php:174
+#: install/run.php:198
 msgid "Could not create application/config/config.php"
 msgstr "application/config/config.php oluşturulamadı"
 
-#: install/run.php:209
+#: install/run.php:233
 msgid "Could not create application/config/database.php"
 msgstr "application/config/database.php dosyası oluşturulamadı"
 
-#: install/run.php:243
+#: install/run.php:267
 msgid "Could not create database tables"
 msgstr "Veritabanı tabloları oluşturulamadı"
 
-#: install/run.php:273
+#: install/run.php:297
 msgid "Could not run database migrations"
 msgstr "Veritabanı geçişleri çalıştırılamadı"
 
-#: install/run.php:301
+#: install/run.php:350
 msgid "Could not update DXCC data"
 msgstr "DXCC verileri güncellenemedi"
 
-#: install/run.php:333
+#: install/run.php:382
 msgid "Could not create install/.lock file"
 msgstr "Install/.lock dosyası oluşturulamadı"
 

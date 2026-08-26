@@ -59,6 +59,92 @@ class Qslpostcard_model extends CI_Model {
         }
     }
 
+    // Duplicate a saved template (layout + its own copy of the background image)
+    // into a new row owned by the same user, appending " (copy)" to the name. The
+    // image file is duplicated on disk (see duplicate_preview_image), never shared,
+    // so deleting either template removes only its own file.
+    public function copy_template($id) {
+        $uid = $this->session->userdata('user_id');
+
+        $src = $this->db->query(
+            "SELECT * FROM qsl_postcard_templates WHERE id = ? AND user_id = ?",
+            [$id, $uid]
+        )->row_array();
+
+        if (!$src) {
+            return false;
+        }
+
+        $copyName = mb_substr(rtrim((string)$src['name']) . ' (' . __('Copy') . ')', 0, 100);
+
+        // Give the copy its own image file — never the source's path — so the two
+        // templates stay fully independent.
+        $preview_image = $this->duplicate_preview_image($src['preview_image'] ?? null);
+
+        $row = [
+            'name'          => $copyName,
+            'layout_json'   => $src['layout_json'],
+            'preview_image' => $preview_image,
+            'orientation'   => $src['orientation'] ?? 'landscape',
+            'width_in'      => $src['width_in'] ?? 6.00,
+            'height_in'     => $src['height_in'] ?? 4.00,
+            'user_id'       => $uid,
+        ];
+
+        $this->db->insert('qsl_postcard_templates', $row);
+        return (int)$this->db->insert_id();
+    }
+
+    // Duplicate a template's background image to a new file in this user's image
+    // dir, returning the new userdata-relative ('u') path. Returns null when the
+    // source has no image or the copy can't be made — never the original path, so
+    // a failure can't silently create a shared reference between templates.
+    private function duplicate_preview_image($preview_image) {
+        if (empty($preview_image)) {
+            return null;
+        }
+
+        try {
+            $file = basename((string)$preview_image);
+            $ext  = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if (!in_array($ext, ['jpg', 'jpeg', 'png'])) {
+                return null;
+            }
+
+            $dir = $this->paths->getUserdataPath('qslpostcard_images', 'p');
+            if ($dir === false) {
+                log_message('error', 'QSLPOSTCARD copy: image dir unavailable');
+                return null;
+            }
+
+            $srcPath = $dir . '/' . $file;
+            if (!file_exists($srcPath) || filesize($srcPath) > self::MAX_BG_IMAGE_BYTES) {
+                log_message('error', 'QSLPOSTCARD copy: source image missing or too large: ' . $srcPath);
+                return null;
+            }
+
+            // Random unique filename (equivalent to CI's encrypt_name), keeping the
+            // original extension. The loop guards the astronomical collision case.
+            $destName = bin2hex(random_bytes(16)) . '.' . $ext;
+            $destPath = $dir . '/' . $destName;
+            $guard = 0;
+            while (file_exists($destPath) && $guard++ < 5) {
+                $destName = bin2hex(random_bytes(16)) . '.' . $ext;
+                $destPath = $dir . '/' . $destName;
+            }
+
+            if (!@copy($srcPath, $destPath)) {
+                log_message('error', 'QSLPOSTCARD copy: could not copy image ' . $srcPath . ' -> ' . $destPath);
+                return null;
+            }
+
+            return $this->paths->getUserdataPath('qslpostcard_images', 'u') . '/' . $destName;
+        } catch (Exception $e) {
+            log_message('error', 'QSLPOSTCARD copy: error duplicating image: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     // TODO: Remove
     // v1 demo: fetch last N QSOs from the logbook table.
     // You will adjust table/column names based on your schema.
@@ -66,7 +152,7 @@ class Qslpostcard_model extends CI_Model {
         $table = $this->config->item('table_name');
 
         // Scope to the logged-in user's stations only
-        $sql = "SELECT {$table}.*
+        $sql = "SELECT {$table}.*, station_profile.station_callsign
             FROM {$table}
             INNER JOIN station_profile ON station_profile.station_id = {$table}.station_id
             WHERE station_profile.user_id = ?
@@ -166,7 +252,9 @@ class Qslpostcard_model extends CI_Model {
         $this->cache->save('callbook_cache_' . md5($callsign), $data, 60 * 60 * 24 * 20); // cache for 20 days
     }
 
-    private function normalize_qso_datetime($qso) {
+    // Public (not private) so the Label Designer model can reuse the shared
+    // QSO-field resolution instead of duplicating it.
+    public function normalize_qso_datetime($qso) {
         $rawDate = trim($qso['COL_QSO_DATE'] ?? $qso['qso_date'] ?? '');
         $rawTime = trim($qso['COL_TIME_ON'] ?? $qso['time_on'] ?? '');
 
@@ -213,7 +301,7 @@ class Qslpostcard_model extends CI_Model {
         return null;
     }
 
-    private function try_parse_datetime($raw) {
+    public function try_parse_datetime($raw) {
         $raw = trim($raw);
         if ($raw === '') return null;
 
@@ -245,7 +333,7 @@ class Qslpostcard_model extends CI_Model {
         return null;
     }
 
-    private const FONT_MAP = [
+    public const FONT_MAP = [
         'Helvetica' => 'DejaVuSans',
         'Times'     => 'DejaVuSerif',
         'Courier'   => 'DejaVuSansMono',
@@ -382,7 +470,7 @@ class Qslpostcard_model extends CI_Model {
                     if ($type === 'text') {
                         $val = $el['text'] ?? '';
                     } else {
-                        $val = $this->resolve_field($field, $qso, $addr);
+                        $val = $this->resolve_field($field, $qso, $addr, $el);
                     }
 
                     if ($val === '') {
@@ -421,7 +509,7 @@ class Qslpostcard_model extends CI_Model {
     }
 
     // "#rrggbb" (or "#rgb") → [r, g, b]; falls back to black on anything malformed.
-    private function hex_to_rgb($hex) {
+    public function hex_to_rgb($hex) {
         $hex = ltrim((string)$hex, '#');
         if (strlen($hex) === 3) {
             $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
@@ -436,27 +524,6 @@ class Qslpostcard_model extends CI_Model {
         ];
     }
 
-    public function dedupe_qsos_by_call(array $qsos) {
-        $seen = [];
-        $deduped = [];
-
-        foreach ($qsos as $qso) {
-            $call = strtoupper(trim($qso['COL_CALL'] ?? ''));
-            if ($call === '') {
-                continue;
-            }
-
-            // Keep the first one we see.
-            // Since your query is already ordered DESC by time, this will keep the most recent QSO.
-            if (!isset($seen[$call])) {
-                $seen[$call] = true;
-                $deduped[] = $qso;
-            }
-        }
-
-        return $deduped;
-    }
-
     public function get_qsl_queue_qsos($filters = []) {
         $table = $this->config->item('table_name');
 
@@ -466,7 +533,7 @@ class Qslpostcard_model extends CI_Model {
         // Most likely starting point for physical cards:
         // requested cards or unsent cards
         // Adjust after we confirm your queue logic.
-        $sql = "SELECT {$table}.*
+        $sql = "SELECT {$table}.*, station_profile.station_callsign
             FROM {$table}
             INNER JOIN station_profile ON station_profile.station_id = {$table}.station_id
             WHERE station_profile.user_id = ?
@@ -514,7 +581,7 @@ class Qslpostcard_model extends CI_Model {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
 
         // Scope to the logged-in user's stations only
-        $sql = "SELECT {$table}.*
+        $sql = "SELECT {$table}.*, station_profile.station_callsign
             FROM {$table}
             INNER JOIN station_profile ON station_profile.station_id = {$table}.station_id
             WHERE station_profile.user_id = ?
@@ -533,11 +600,11 @@ class Qslpostcard_model extends CI_Model {
         return $q->result_array();
     }
 
-    private function pretty_sat_mode($sat_mode) {
+    public function pretty_sat_mode($sat_mode) {
         return (strlen($sat_mode ?? '') == 2) ? (strtoupper($sat_mode[0]) . '/' . strtoupper($sat_mode[1])) : strtoupper($sat_mode ?? '');
     }
 
-    private function resolve_band($qso) {
+    public function resolve_band($qso) {
         $prop = strtoupper(trim($qso['COL_PROP_MODE'] ?? ''));
         $sat  = trim($qso['COL_SAT_NAME'] ?? '');
         if ($prop === 'SAT' && $sat !== '') {
@@ -547,12 +614,12 @@ class Qslpostcard_model extends CI_Model {
         return $qso['COL_BAND'] ?? $qso['band'] ?? '';
     }
 
-    private function resolve_mode($qso) {
+    public function resolve_mode($qso) {
         $sub = trim($qso['COL_SUBMODE'] ?? '');
         return $sub !== '' ? $sub : ($qso['COL_MODE'] ?? $qso['mode'] ?? '');
     }
 
-    private function resolve_field($field, $qso, $addr) {
+    public function resolve_field($field, $qso, $addr, $el = []) {
 
         // Address computed fields
         if ($field === 'addr.source') {
@@ -603,7 +670,21 @@ class Qslpostcard_model extends CI_Model {
         if ($field === 'qso.mode') return $this->resolve_mode($qso);
         if ($field === 'qso.sat_name') return trim($qso['COL_SAT_NAME'] ?? '');
         if ($field === 'qso.sat_mode') return $this->pretty_sat_mode($qso['COL_SAT_MODE'] ?? '');
-        if ($field === 'qso.freq') return $qso['COL_FREQ'] ?? $qso['freq'] ?? '';
+        if ($field === 'qso.freq') {
+            $hz = $qso['COL_FREQ'] ?? $qso['freq'] ?? '';
+            if ($hz === '' || $hz === null || (float)$hz == 0) {
+                return '';
+            }
+            $unit = $el['freq_format'] ?? 'MHz';
+            if (!in_array($unit, ['Hz', 'kHz', 'MHz'], true)) {
+                $unit = 'MHz';
+            }
+            if (!$this->load->is_loaded('frequency')) {
+                $this->load->library('frequency');
+            }
+            $r_option = !empty($el['freq_no_unit']) ? 0 : 1;
+            return $this->frequency->qrg_conversion((float)$hz, $r_option, 'Hz', $unit) ?? '';
+        }
         if ($field === 'qso.rst_sent') return $qso['COL_RST_SENT'] ?? $qso['rst_sent'] ?? '';
         if ($field === 'qso.rst_rcvd') return $qso['COL_RST_RCVD'] ?? $qso['rst_rcvd'] ?? '';
         if ($field === 'qso.r_sent') return substr($qso['COL_RST_SENT'] ?? $qso['rst_sent'] ?? '', 0, 1);
@@ -692,6 +773,18 @@ class Qslpostcard_model extends CI_Model {
         if ($field === 'qso.my_iota_ref') return $qso['COL_MY_IOTA'] ?? '';
 
         if ($field === 'qso.my_grid') return trim($qso['COL_MY_GRIDSQUARE'] ?? '');
+
+        if ($field === 'qso.station_callsign') {
+            return strtoupper($qso['station_callsign'] ?? $qso['COL_STATION_CALLSIGN'] ?? '');
+        }
+
+        if ($field === 'qso.operator') {
+            $op = strtoupper(trim($qso['COL_OPERATOR'] ?? ''));
+            if ($op !== '') {
+                return $op;
+            }
+            return strtoupper($qso['station_callsign'] ?? $qso['COL_STATION_CALLSIGN'] ?? '');
+        }
 
         if ($field === 'qso.iota_line') {
             $ref = trim($qso['COL_MY_IOTA'] ?? '');

@@ -1,3 +1,16 @@
+/**
+ * Escape a value for insertion into HTML.
+ * Needed wherever markup is built as a string instead of via .text(), e.g.
+ * DataTables cells, which are rendered through innerHTML.
+ *
+ * @param {*} value Value to escape
+ * @returns {*} Escaped string, or the value unchanged if null/undefined
+ */
+function escapeHtml(value) {
+	if (value === null || value === undefined) return value;
+	return String(value).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'})[c]);
+}
+
 // ========================================
 // PLATFORM DETECTION UTILITIES
 // ========================================
@@ -456,30 +469,18 @@ function qso_edit(id) {
                             $.ajax({
                                url: base_url + 'index.php/logbook/searchbearing',
                                type: 'post',
+                               dataType: 'json',
                                data: {
                                   grid: $('#locator_edit').val(),
                                   ant_path: $('#ant_path_edit').val(),
                                   stationProfile: $('#stationProfile').val()
                                },
                                success: function(data) {
-                                  $('#locator_info_edit').html(data).fadeIn("slow");
+                                  $('#locator_info_edit').html(data.text).fadeIn("slow");
+                                  $("#distance").val(data.distance_km ?? '');
                                },
                                error: function() {
                                   $('#locator_info_edit').text("Error loading bearing!").fadeIn("slow");
-                               },
-                            });
-                            $.ajax({
-                               url: base_url + 'index.php/logbook/searchdistance',
-                               type: 'post',
-                               data: {
-                                  grid: $('#locator_edit').val(),
-                                  ant_path: $('#ant_path_edit').val(),
-                                  stationProfile: $('#stationProfile').val()
-                               },
-                               success: function(data) {
-                                  $("#distance").val(parseFloat(data));
-                               },
-                               error: function() {
                                   $('#distance').val('');
                                },
                             });
@@ -494,28 +495,17 @@ function qso_edit(id) {
                             $.ajax({
                                url: base_url + 'index.php/logbook/searchbearing',
                                type: 'post',
+                               dataType: 'json',
                                data: {
                                   grid: $(this).val(),
                                   stationProfile: $('#stationProfile').val()
                                },
                                success: function(data) {
-                                  $('#locator_info_edit').html(data).fadeIn("slow");
+                                  $('#locator_info_edit').html(data.text).fadeIn("slow");
+                                  $("#distance").val(data.distance_km ?? '');
                                },
                                error: function() {
                                   $('#locator_info_edit').text("Error loading bearing!").fadeIn("slow");
-                               },
-                            });
-                            $.ajax({
-                               url: base_url + 'index.php/logbook/searchdistance',
-                               type: 'post',
-                               data: {
-                                  grid: $(this).val(),
-                                  stationProfile: $('#stationProfile').val()
-                               },
-                               success: function(data) {
-                                  $("#distance").val(parseFloat(data));
-                               },
-                               error: function() {
                                   $("#distance").val('');
                                },
                             });
@@ -724,7 +714,7 @@ function selectize_usa_county(state_field, county_field) {
     });
 }
 
-async function updateStateDropdown(dxcc_field, state_label, county_div, county_input, dropdown = '#stateDropdown') {
+async function updateStateDropdown(dxcc_field, state_label, county_div, county_input, dropdown = '#stateDropdown', set_state = null) {
     var selectedDxcc = $(dxcc_field);
 	var selectedState = $(dropdown);
 
@@ -864,6 +854,9 @@ function calculateQrb() {
                 newpath(html['latlng1'], html['latlng2'], locator1, locator2);
             }
         });
+    } else if (locator1 == '' || locator2 == '') {
+        $('.qrbResult').html('<div class="qrbalert alert alert-danger" role="alert">' + lang_qrbcalc_empty_loc + '</div>');
+        $("#mapqrb").hide();
     } else {
         $("#mapqrb").hide();
         $('.qrbResult').html('<div class="qrbalert alert alert-danger" role="alert">' + lang_qrbcalc_errmsg + '</div>');
@@ -1057,9 +1050,10 @@ function qso_set_eqsl_qslmsg(station_id, force_diff_to_origin=false, object='') 
         success: function(res) {
             if (typeof res.eqsl_default_qslmsg !== "undefined") {
                 object = (object!='')?(object+' '):'';
-                if ((force_diff_to_origin) || ($(object+'#qslmsg').val()==$(object+'#qslmsg_hide').html())) {
+                // .text() so the comparison sees the same decoded string as .val()
+                if ((force_diff_to_origin) || ($(object+'#qslmsg').val()==$(object+'#qslmsg_hide').text())) {
                     $(object+'#qslmsg').val(res.eqsl_default_qslmsg);
-                    $(object+'#qslmsg_hide').html(res.eqsl_default_qslmsg);
+                    $(object+'#qslmsg_hide').text(res.eqsl_default_qslmsg);
                 }
             }
         },
@@ -1121,7 +1115,6 @@ if ($('.table-responsive .dropdown-toggle').length>0) {
     });
 }
 
-var set_state;
 function statesDropdown(states, set_state = null, dropdown = '#stateDropdown') {
     var dropdown = $(dropdown);
     dropdown.empty();
@@ -1384,7 +1377,7 @@ function enableMap() {
     map.keyboard.enable();
 }
 
-function shareModal(qso_data) {
+function shareModal(qso_data, title) {
     $.ajax({
         url: base_url + 'index.php/qso/getShareModal',
         type: 'post',
@@ -1393,7 +1386,7 @@ function shareModal(qso_data) {
         },
         success: function (html) {
             BootstrapDialog.show({
-                title: lang_general_share_qso,
+                title: title || lang_general_share_qso,
                 cssClass: 'bg-black bg-opacity-50',
                 nl2br: false,
                 message: html,
@@ -1410,13 +1403,15 @@ function shareModal(qso_data) {
 
 
 // Show Bootstrap Toast
-function showToast(title, text, type = 'bg-success text-white', delay = 3000) {
+function showToast(title, text, type = 'bg-success text-white', delay = 3000, autohide = true) {
 	/*
 	Examples:
 	showToast('Saved', 'Your data was saved!', 'bg-success text-white', 3000);
 	showToast('Error', 'Failed to connect to server.', 'bg-danger text-white', 5000);
 	showToast('Warning', 'Please check your input.', 'bg-warning text-dark', 4000);
 	showToast('Info', 'System will restart soon.', 'bg-info text-dark', 4000);
+	// Persistent toast (stays until manually dismissed):
+	showToast('Error', 'Connection lost.', 'bg-danger text-white', 0, false);
 	*/
 
 	const container = document.getElementById('toast-container');
@@ -1427,6 +1422,7 @@ function showToast(title, text, type = 'bg-success text-white', delay = 3000) {
 	toastEl.setAttribute('role', 'alert');
 	toastEl.setAttribute('aria-live', 'assertive');
 	toastEl.setAttribute('aria-atomic', 'true');
+	toastEl.setAttribute('data-bs-autohide', autohide ? 'true' : 'false');
 	toastEl.setAttribute('data-bs-delay', delay);
 
 	// Toast inner HTML
@@ -1554,6 +1550,20 @@ function LatLng2Loc(y, x, num) {
 	if (num >= 10) qthloc+=String.fromCharCode(yn[8] + 0x61) + String.fromCharCode(yn[9] + 0x61);
 	return qthloc;
 }
+
+// Fetch an HTML fragment and swap it into a target element, then reinit tooltips.
+// Replaces the former htmx hx-get / hx-target mechanism.
+window.wlLoadInto = function (url, target) {
+    const el = (typeof target === 'string') ? document.querySelector(target) : target;
+    if (!el) return Promise.resolve();
+    return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.text())
+        .then(html => {
+            el.innerHTML = html;
+            // reinit Bootstrap tooltips on freshly swapped content (was htmx:afterSwap)
+            $('[data-bs-toggle="tooltip"]', el).tooltip();
+        });
+};
 
 // DO NOT DELETE: This message is intentional and serves as developer recruitment/engagement
 console.log("Ready to unleash your coding prowess and join the fun?\n\n" +

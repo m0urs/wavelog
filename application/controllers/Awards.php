@@ -16,7 +16,6 @@ class Awards extends CI_Controller {
 	{
 		parent::__construct();
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$map_custom = json_decode($this->optionslib->get_map_custom());
@@ -120,6 +119,7 @@ class Awards extends CI_Controller {
 
 		$data['worked_bands'] = $this->bands->get_worked_bands('dxcc'); // Used in the view for band select
 		$data['modes'] = $this->modes->active(); // Used in the view for mode select
+		$data['adif_propmodes'] = $this->config->item('adif_propmodes');
 
 		if ($this->input->post('band') != NULL) {   // Band is not set when page first loads.
 			if ($this->input->post('band') == 'All') {         // Did the user specify a band? If not, use all bands
@@ -155,6 +155,7 @@ class Awards extends CI_Controller {
 			$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
 			$postdata['sat'] = $this->security->xss_clean($this->input->post('sats'));
 			$postdata['orbit'] = $this->security->xss_clean($this->input->post('orbits'));
+			$postdata['prop_mode'] = $this->security->xss_clean($this->input->post('prop_mode'));
 
 			$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
 			$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
@@ -180,6 +181,7 @@ class Awards extends CI_Controller {
 			$postdata['mode'] = 'All';
 			$postdata['sat'] = 'All';
 			$postdata['orbit'] = 'All';
+			$postdata['prop_mode'] = 'All';
 
 			$postdata['dateFrom'] = null;
 			$postdata['dateTo'] = null;
@@ -241,6 +243,7 @@ class Awards extends CI_Controller {
 				$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
 				$postdata['sat'] = $this->security->xss_clean($this->input->post('sat'));
 				$postdata['orbit'] = $this->security->xss_clean($this->input->post('orbit'));
+				$postdata['prop_mode'] = $this->security->xss_clean($this->input->post('prop_mode'));
 				$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
 				$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
 			} else {
@@ -265,6 +268,7 @@ class Awards extends CI_Controller {
 				$postdata['mode'] = 'All';
 				$postdata['sat'] = 'All';
 				$postdata['orbit'] = 'All';
+				$postdata['prop_mode'] = 'All';
 				$postdata['dateFrom'] = null;
 				$postdata['dateTo'] = null;
 			}
@@ -477,23 +481,19 @@ class Awards extends CI_Controller {
 		$footerData = [];
 		$footerData['scripts'] = [
 			'assets/js/sections/jcc.js',
-			'assets/js/sections/jccmap.js'
+			'assets/js/sections/jccmap.js',
 		];
 
-		$this->load->helper('awards');
 		$this->load->model('jcc_model');
-		$this->load->model('modes');
+		$this->load->model('logbookadvanced_model');
 		$this->load->model('bands');
 
-		if($this->input->method() === 'post') {
+		if ($this->input->method() === 'post') {
 			$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
 			$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
 			$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
 			$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
 			$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
-			$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
-			$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
-			$postdata['notworked'] = ($this->input->post('notworked', true) ?? 0) == 0 ? null : 1;
 			$postdata['includedeleted'] = ($this->input->post('includedeleted', true) ?? 0) == 0 ? null : 1;
 			$postdata['band'] = $this->input->post('band', true) ?? 'All';
 			$postdata['mode'] = $this->input->post('mode', true) ?? 'All';
@@ -505,9 +505,6 @@ class Awards extends CI_Controller {
 			$postdata['eqsl'] = 1;
 			$postdata['qrz'] = null;
 			$postdata['clublog'] = null;
-			$postdata['worked'] = 1;
-			$postdata['confirmed'] = 1;
-			$postdata['notworked'] = null;
 			$postdata['includedeleted'] = null;
 			$postdata['band'] = 'All';
 			$postdata['mode'] = 'All';
@@ -516,24 +513,14 @@ class Awards extends CI_Controller {
 		$data['postdata'] = $postdata;
 
 		$data['worked_bands'] = $this->bands->get_worked_bands('jcc');
-		$data['modes'] = $this->modes->active();
+		$data['modes'] = $this->logbookadvanced_model->get_modes();
 		$data['user_map_custom'] = $this->optionslib->get_map_custom();
 
-		// If "All" is selected, show all bands that have been worked. Otherwise, just the selected band.
-		if ($postdata['band'] == 'All') {
-			$bands = $data['worked_bands'];
-		} else {
-			$bands = [$postdata['band']];
-		}
-		$data['bands'] = $bands; // Used for displaying selected band(s) in the table in the view
+		$jcc_entity_status = $this->jcc_model->query_jcc_entity_status($postdata);
+		$data['jcc_groups'] = $this->jcc_model->get_jcc_grouped_slot($postdata, $jcc_entity_status);
+		$data['jcc_summary'] = $this->jcc_model->get_jcc_summary($postdata, $jcc_entity_status);
+		$data['has_active_slots'] = ($data['jcc_summary']['worked'] ?? 0) > 0;
 
-		// Query the database for JCC status
-		$jcc_entity_status = $this->jcc_model->query_entity_status($postdata, 'band');
-
-		$data['jcc_array'] = $this->jcc_model->get_jcc_array($bands, $postdata, $jcc_entity_status);
-		$data['jcc_summary'] = $this->jcc_model->get_jcc_summary($bands, $postdata, $jcc_entity_status);
-
-		// Render Page
 		$data['page_title'] = sprintf(__("Awards - %s"), __("JCC"));
 		$this->load->view('interface_assets/header', $data);
 		$this->load->view('awards/jcc/index');
@@ -698,14 +685,94 @@ class Awards extends CI_Controller {
 
 		// Grab all worked sota stations
 		$this->load->model('sota');
+		$this->load->model('bands');
+		$this->load->model('modes');
 		$data['sota_all'] = $this->sota->get_all();
 		$data['user_map_custom'] = $this->optionslib->get_map_custom();
+		$data['worked_bands'] = $this->bands->get_worked_bands('sota');
+		$data['modes'] = $this->modes->active();
 
 		// Render page
 		$data['page_title'] = sprintf(__("Awards - %s"), __("SOTA"));
 		$this->load->view('interface_assets/header', $data);
 		$this->load->view('awards/sota/index');
 		$this->load->view('interface_assets/footer');
+	}
+
+	public function sota_map() {
+		$this->load->model('sota');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		$data = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$data = $this->sota->get_map_data($postdata, $location_list);
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode($data);
+	}
+
+	public function sota_table() {
+		$this->load->model('sota');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		if ($this->session->userdata('user_date_format')) {
+			$date_format = $this->session->userdata('user_date_format');
+		} else {
+			$date_format = $this->config->item('qso_date_format');
+		}
+
+		$out = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$rows = $this->sota->get_qso_list($postdata, $location_list);
+			foreach ($rows as $row) {
+				$ts = strtotime($row->COL_TIME_ON);
+				$out[] = [
+					'<a target="_blank" href="https://www.sotadata.org.uk/en/summit/' . htmlspecialchars((string)$row->COL_SOTA_REF) . '">' . htmlspecialchars((string)$row->COL_SOTA_REF) . '</a>',
+					date($date_format, $ts),
+					date('H:i', $ts),
+					'<a href="javascript:displayQso(' . (int)$row->COL_PRIMARY_KEY . ')">' . htmlspecialchars((string)$row->COL_CALL) . '</a>',
+					($row->COL_SAT_NAME != null) ? $row->COL_SAT_NAME : $row->COL_BAND,
+					$row->COL_RST_SENT,
+					$row->COL_RST_RCVD,
+				];
+			}
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $out]);
 	}
 
 	/*
@@ -716,14 +783,94 @@ class Awards extends CI_Controller {
 
 		// Grab all worked wwff stations
 		$this->load->model('wwff');
+		$this->load->model('bands');
+		$this->load->model('modes');
 		$data['wwff_all'] = $this->wwff->get_all();
 		$data['user_map_custom'] = $this->optionslib->get_map_custom();
+		$data['worked_bands'] = $this->bands->get_worked_bands('wwff');
+		$data['modes'] = $this->modes->active();
 
 		// Render page
 		$data['page_title'] = sprintf(__("Awards - %s"), __("WWFF"));
 		$this->load->view('interface_assets/header', $data);
 		$this->load->view('awards/wwff/index');
 		$this->load->view('interface_assets/footer');
+	}
+
+	public function wwff_map() {
+		$this->load->model('wwff');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		$data = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$data = $this->wwff->get_map_data($postdata, $location_list);
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode($data);
+	}
+
+	public function wwff_table() {
+		$this->load->model('wwff');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		if ($this->session->userdata('user_date_format')) {
+			$date_format = $this->session->userdata('user_date_format');
+		} else {
+			$date_format = $this->config->item('qso_date_format');
+		}
+
+		$out = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$rows = $this->wwff->get_qso_list($postdata, $location_list);
+			foreach ($rows as $row) {
+				$ts = strtotime($row->COL_TIME_ON);
+				$out[] = [
+					'<a target="_blank" href="https://www.cqgma.org/zinfo.php?ref=' . htmlspecialchars((string)$row->COL_WWFF_REF) . '">' . htmlspecialchars((string)$row->COL_WWFF_REF) . '</a>',
+					date($date_format, $ts),
+					date('H:i', $ts),
+					'<a href="javascript:displayQso(' . (int)$row->COL_PRIMARY_KEY . ')">' . htmlspecialchars((string)$row->COL_CALL) . '</a>',
+					($row->COL_SAT_NAME != null) ? $row->COL_SAT_NAME : $row->COL_BAND,
+					$row->COL_RST_SENT,
+					$row->COL_RST_RCVD,
+				];
+			}
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $out]);
 	}
 
 	/*
@@ -734,14 +881,108 @@ class Awards extends CI_Controller {
 
 		// Grab all worked pota stations
 		$this->load->model('pota');
+		$this->load->model('bands');
+		$this->load->model('modes');
 		$data['pota_all'] = $this->pota->get_all();
 		$data['user_map_custom'] = $this->optionslib->get_map_custom();
+		$data['worked_bands'] = $this->bands->get_worked_bands('pota');
+		$data['modes'] = $this->modes->active();
+		$data['pota_award_tiers'] = $this->pota->award_tiers();
+		$data['pota_hunted_count'] = $this->pota->count_unique_references('COL_POTA_REF');
 
 		// Render page
 		$data['page_title'] = sprintf(__("Awards - %s"), __("POTA"));
 		$this->load->view('interface_assets/header', $data);
 		$this->load->view('awards/pota/index');
 		$this->load->view('interface_assets/footer');
+	}
+
+	public function pota_map() {
+		$this->load->model('pota');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		$data = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$data = $this->pota->get_map_data($postdata, $location_list);
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode($data);
+	}
+
+	public function pota_table() {
+		$this->load->model('pota');
+		$this->load->model('logbooks_model');
+
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
+		$postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
+
+		$postdata['band'] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
+		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
+		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
+
+		if ($this->session->userdata('user_date_format')) {
+			$date_format = $this->session->userdata('user_date_format');
+		} else {
+			$date_format = $this->config->item('qso_date_format');
+		}
+
+		$out = [];
+
+		$logbooks_locations_array = $this->logbooks_model->list_logbook_relationships($this->session->userdata('active_station_logbook'));
+		if ($logbooks_locations_array && $logbooks_locations_array[0] !== -1) {
+			$location_list = "'" . implode("','", $logbooks_locations_array) . "'";
+			$rows = $this->pota->get_qso_list($postdata, $location_list);
+			foreach ($rows as $row) {
+				$ts = strtotime($row->COL_TIME_ON);
+				$dateCell = date($date_format, $ts);
+				$timeCell = date('H:i', $ts);
+				$callCell = '<a href="javascript:displayQso(' . (int)$row->COL_PRIMARY_KEY . ')">' . htmlspecialchars((string)$row->COL_CALL) . '</a>';
+				$bandCell = ($row->COL_SAT_NAME != null) ? $row->COL_SAT_NAME : $row->COL_BAND;
+				$rstSent = $row->COL_RST_SENT;
+				$rstRcvd = $row->COL_RST_RCVD;
+				// A QSO can carry several POTA references - emit one row per park
+				foreach (explode(',', (string)$row->COL_POTA_REF) as $reference) {
+					$reference = trim($reference);
+					if ($reference === '') continue;
+					$refCell = '<a target="_blank" href="https://pota.app/#/park/' . htmlspecialchars($reference) . '">' . htmlspecialchars($reference) . '</a>';
+					$out[] = [
+						$refCell,
+						$dateCell,
+						$timeCell,
+						$callCell,
+						$bandCell,
+						$rstSent,
+						$rstRcvd,
+					];
+				}
+			}
+		}
+
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $out]);
 	}
 
 	public function cq() {
@@ -1097,45 +1338,127 @@ class Awards extends CI_Controller {
 	    $this->load->view('interface_assets/footer');
     }
 
-    public function counties()	{
+    public function counties() {
+        $footerData = [];
+        $footerData['scripts'] = [
+            'assets/js/bootstrap-multiselect.js',
+            'assets/js/sections/countiesmap.js',
+            'assets/js/leaflet/L.Maidenhead.js',
+        ];
+
         $this->load->model('counties');
-        $data['counties_progress'] = $this->counties->get_counties_progress();
-		$data['user_map_custom'] = $this->optionslib->get_map_custom();
+        $this->load->model('logbookadvanced_model');
+        $this->load->model('bands');
+
+        $postdata = $this->counties_postdata();
+        if ($this->input->method() !== 'post') {   // Default QSL + LoTW at first load of page
+            $postdata['qsl'] = 1;
+            $postdata['lotw'] = 1;
+        }
+
+        $data['counties_progress'] = $this->counties->get_counties_progress($postdata);
+        $data['postdata'] = $postdata;
+        $data['worked_bands'] = $this->bands->get_worked_bands('uscounties');
+        $data['modes'] = $this->logbookadvanced_model->get_modes();
+        $data['user_map_custom'] = $this->optionslib->get_map_custom();
+
+        //$bodyData['user_map_custom'] = $this->optionslib->get_map_custom();
 
         // Render Page
         $data['page_title'] = sprintf(__("Awards - %s"), __("US Counties"));
         $this->load->view('interface_assets/header', $data);
-        $this->load->view('awards/counties/index');
-        $this->load->view('interface_assets/footer');
+        $this->load->view('awards/counties/index'); //, $bodyData);
+        $this->load->view('interface_assets/footer', $footerData);
     }
 
+    /*
+        function counties_map
+
+        AJAX endpoint backing the counties map: returns a JSON map of
+        "STATE|County" -> 'C' (confirmed), 'W' (worked, not confirmed) or
+        omitted (not worked), mirroring was_map()'s status-map convention.
+    */
+    public function counties_map() {
+        $this->load->model('counties');
+        $county_counts = $this->counties->get_counties_map($this->counties_postdata());
+
+        // Keys are uppercased because a QSO's county name can be typed or
+        // imported in any case; countiesmap.js uppercases the GeoJSON
+        // feature ids to match.
+        $statuses = array();
+        if (isset($county_counts)) {
+            foreach ($county_counts as $row) {
+                $key = strtoupper($row['COL_STATE'] . '|' . trim($row['COL_CNTY']));
+                $status = ((int) $row['confirmed'] > 0) ? 'C' : 'W';
+                if ($status === 'C' || !isset($statuses[$key])) {
+                    $statuses[$key] = $status;
+                }
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($statuses);
+    }
+
+    /*
+     * Builds the filter postdata for the counties award, like the other
+     * award pages: qsl/lotw/eqsl/qrz/clublog checkboxes plus band/mode
+     * multi-selects ('All' when nothing is selected).
+     */
+    private function counties_postdata() {
+        $postdata = array();
+        foreach (array('qsl', 'lotw', 'eqsl', 'qrz', 'clublog') as $source) {
+            $postdata[$source] = $this->input->post($source, true) ? 1 : NULL;
+        }
+
+        $band = $this->input->post('band', true);
+        $postdata['band'] = empty($band) ? 'All' : $band;
+
+        $mode = $this->input->post('mode', true);
+        $postdata['mode'] = empty($mode) ? 'All' : $mode;
+
+        return $postdata;
+    }
+
+    // Type: 'worked'|'confirmed' (from log), 'target' (all), 'needed' (not worked)
     public function counties_list_ajax() {
         $this->load->model('counties');
-        $state = str_replace('"', "", $this->security->xss_clean($this->input->post("State")));
-        $type  = str_replace('"', "", $this->security->xss_clean($this->input->post("Type")));
-        $data['counties_array'] = $this->counties->counties_details($state, $type);
-        $data['type'] = $type;
-        $this->load->view('awards/counties/details_ajax', $data);
+        $state = str_replace('"', "", $this->input->post("State", true));
+        $type  = str_replace('"', "", $this->input->post("Type", true));
+
+        if ($type == 'target') {
+            $data['counties_array'] = $this->counties->get_counties_list($state);
+            $this->load->view('awards/counties/counties_simple_ajax', $data);
+        } else if ($type == 'needed') {
+            $data['counties_array'] = $this->counties->get_counties_needed($state, $this->counties_postdata());
+            $this->load->view('awards/counties/counties_simple_ajax', $data);
+        } else {
+            $data['counties_array'] = $this->counties->counties_details($state, $type, $this->counties_postdata());
+            $data['type'] = $type;
+            $this->load->view('awards/counties/details_ajax', $data);
+        }
     }
 
     public function counties_details_ajax() {
         $this->load->model('logbook_model');
+        $this->load->model('counties');
 
-        $state = str_replace('"', "", $this->security->xss_clean($this->input->post("State")));
-        $county = str_replace('"', "", $this->security->xss_clean($this->input->post("County")));
-        $data['results'] = $this->logbook_model->county_qso_details($state, $county);
+        $state = str_replace('"', "", $this->input->post("State", true));
+        $county = str_replace('"', "", $this->input->post("County", true));
+        $data['results'] = $this->logbook_model->county_qso_details($state, $county, $this->counties_postdata());
 		$data['adif_propmodes'] = $this->config->item('adif_propmodes');
 
         // Render Page
         $data['page_title'] = __("Log View - Counties");
-        $data['filter'] = "county " . $state;
+        // $county may arrive bare (map click) or "STATE,COUNTY"-prefixed (state list dialog)
+        $data['filter'] = "county " . $this->counties->bare_county($county) . ", " . $state;
         $this->load->view('awards/details', $data);
     }
 
     public function counties_state_ajax() {
         $this->load->model('counties');
-        $state = str_replace('"', "", $this->security->xss_clean($this->input->post("State")));
-        $data['counties_array'] = $this->counties->get_county_counts($state);
+        $state = str_replace('"', "", $this->input->post("State", true));
+        $data['counties_array'] = $this->counties->get_county_counts($state, $this->counties_postdata());
         $data['state'] = $state;
         $this->load->view('awards/counties/state_ajax', $data);
     }
@@ -1982,6 +2305,7 @@ class Awards extends CI_Controller {
 		$postdata['mode'] = $this->security->xss_clean($this->input->post('mode'));
 		$postdata['sat'] = $this->security->xss_clean($this->input->post('sat'));
 		$postdata['orbit'] = $this->security->xss_clean($this->input->post('orbit'));
+		$postdata['prop_mode'] = $this->security->xss_clean($this->input->post('prop_mode'));
 
 		$postdata['dateFrom'] = $this->security->xss_clean($this->input->post('dateFrom'));
 		$postdata['dateTo'] = $this->security->xss_clean($this->input->post('dateTo'));
@@ -2026,29 +2350,23 @@ class Awards extends CI_Controller {
 	 * Provide data for AJAX to render the JCC map
 	 */
     public function jcc_map() {
-	    $this->load->model('jcc_model');
-	    $this->load->model('bands');
+		$this->load->model('jcc_model');
 
-	    $bands[] = $this->security->xss_clean($this->input->post('band'));
+		$postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
+		$postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
+		$postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
+		$postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
+		$postdata['includedeleted'] = ($this->input->post('includedeleted', true) ?? 0) == 0 ? null : 1;
+		$postdata['band'] = $this->input->post('band', true) ?? 'All';
+		$postdata['mode'] = $this->input->post('mode', true) ?? 'All';
+		$postdata['prop_mode'] = $this->input->post('prop_mode', true) ?? 'All';
 
-	    $postdata['qsl'] = ($this->input->post('qsl', true) ?? 0) == 0 ? null : 1;
-	    $postdata['lotw'] = ($this->input->post('lotw', true) ?? 0) == 0 ? null : 1;
-	    $postdata['eqsl'] = ($this->input->post('eqsl', true) ?? 0) == 0 ? null : 1;
-	    $postdata['qrz'] = ($this->input->post('qrz', true) ?? 0) == 0 ? null : 1;
-	    $postdata['clublog'] = ($this->input->post('clublog', true) ?? 0) == 0 ? null : 1;
-	    $postdata['worked'] = ($this->input->post('worked', true) ?? 0) == 0 ? null : 1;
-	    $postdata['confirmed'] = ($this->input->post('confirmed', true) ?? 0) == 0 ? null : 1;
-	    $postdata['notworked'] = ($this->input->post('notworked', true) ?? 0) == 0 ? null : 1;
-	    $postdata['includedeleted'] = ($this->input->post('includedeleted', true) ?? 0) == 0 ? null : 1;
-	    $postdata['band'] = $this->input->post('band', true) ?? 'All';
-	    $postdata['mode'] = $this->input->post('mode', true) ?? 'All';
-	    $postdata['prop_mode'] = $this->input->post('prop_mode', true) ?? 'All';
+		$jcc_entity_status = $this->jcc_model->query_jcc_entity_status($postdata);
+		$jccs = $this->jcc_model->get_jcc_map_array($postdata, $jcc_entity_status);
 
-	    $jcc_entity_status = $this->jcc_model->query_entity_status($postdata, 'none');
-	    $jccs = $this->jcc_model->get_jcc_map_array($postdata, $jcc_entity_status);
-
-	    header('Content-Type: application/json');
-	    echo json_encode($jccs);
+		header('Content-Type: application/json');
+		echo json_encode($jccs);
     }
 
     /*
@@ -2095,6 +2413,7 @@ class Awards extends CI_Controller {
 
 	    $i = 0;
 
+		$newiota = [];
 	    foreach ($iotalist as $iota) {
 		    $newiota[$i]['tag'] = $iota->tag;
 		    $newiota[$i]['prefix'] = $iota->prefix;

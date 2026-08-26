@@ -5,7 +5,6 @@ class Bandmap extends CI_Controller {
 	function __construct() {
 		parent::__construct();
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 		$this->load->model('bands');
 	}
@@ -16,6 +15,18 @@ class Bandmap extends CI_Controller {
 		$data['radios'] = $this->cat->radios();
 		$data['radio_last_updated'] = $this->cat->last_updated()->row();
 		$data['bands'] = $this->bands->get_user_bands_for_qso_entry();
+
+		$this->load->is_loaded('worker') ?: $this->load->library('worker');
+		$data['worker_enabled'] = $this->worker->is_enabled(); // without this line worker.js is not loaded!
+		$radio_worker_topics = [];
+		if ($this->worker->is_enabled()) {
+			foreach ($data['radios']->result() as $radio) {
+				$topic = 'radio.' . $radio->id;
+				$this->worker->register_topic($topic);
+				$radio_worker_topics[$radio->id] = ['topic' => $topic, 'token' => $this->worker->create_token($topic)];
+			}
+		}
+		$pageData['radio_worker_topics'] = $radio_worker_topics;
 
 		$footerData = [];
 		$footerData['scripts'] = [

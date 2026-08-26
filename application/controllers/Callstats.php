@@ -8,7 +8,6 @@ class Callstats extends CI_Controller
     {
         parent::__construct();
 
-        $this->load->model('user_model');
         if (!$this->user_model->authorize(2)) {
             $this->session->set_flashdata('error', __("You're not allowed to do that!"));
             redirect('dashboard');
@@ -114,9 +113,6 @@ class Callstats extends CI_Controller
 		}
 		if ($mode != null && strtolower($mode) != 'all') {
 			$data['filter'] .= __(" and mode ").$mode;
-		}
-		if (!empty($qsltype)) {
-			$data['filter'] .= __(" and ").implode('/', $qsltype);
 		}
 		$this->load->view('awards/details', $data);
 	}

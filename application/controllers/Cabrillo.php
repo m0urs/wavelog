@@ -7,7 +7,6 @@ class Cabrillo extends CI_Controller {
 	public function __construct() {
         parent::__construct();
 
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2) || !clubaccess_check(9)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 	}
 
@@ -16,6 +15,12 @@ class Cabrillo extends CI_Controller {
 		//load user stations
 		$this->load->model('stations');
 		$data['station_profile'] = $this->stations->all_of_user();
+		$data['allowed_tabs'] = ['import', 'export', 'lotw', 'dcl', 'pota', 'cbr'];
+		$data['stations_active_log_only'] = !empty($this->session->userdata('user_stations_active_log_only'));
+		$data['cd_p_level'] = ($this->session->userdata('cd_p_level') ?? 0);
+		$this->load->model('contest_admin_model');
+		$data['contests'] = $this->contest_admin_model->getActiveContests();
+		$data['active_station_id'] = $this->stations->find_active();
 
 		//set page title and target tab
 		$data['page_title'] = __("Cabrillo Import");
@@ -42,7 +47,7 @@ class Cabrillo extends CI_Controller {
 
 		//get data from upload
 		$contest_id = $this->input->post('contest_id', false) ?? '';
-		$data = array('upload_data' => $this->upload->data());
+		$data['upload_data'] = $this->upload->data();
 
 		//set memory limit to allow big files
 		ini_set('memory_limit', '-1');

@@ -21,6 +21,7 @@ class Worker {
 	private string $secret;
 	private int    $timeout_ms;
 	private bool   $enabled;
+	private int    $token_expiration;
 
 	public function __construct() {
 		$CI =& get_instance();
@@ -43,6 +44,11 @@ class Worker {
 		$this->enabled    = (bool) $CI->config->item('worker_enabled', 'worker')
 		                    && $this->url !== ''
 		                    && $this->secret !== '';
+		$this->token_expiration = (int) ($CI->config->item('worker_token_expiration', 'worker') ?? 86400); // Default 24h
+		// if token_expiration is set to 0 or negative, we throw an exception to prevent misconfiguration
+		if ($this->token_expiration <= 0) {
+			throw new InvalidArgumentException('worker_token_expiration must be positive');
+		}
 	}
 
 	/**
@@ -106,7 +112,6 @@ class Worker {
 		curl_exec($ch);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$curl_err  = curl_error($ch);
-		curl_close($ch);
 
 		if ($curl_err !== '') {
 			log_message('error', 'Worker: publish(' . $topic . ') failed: ' . $curl_err);
@@ -146,9 +151,13 @@ class Worker {
 	 * @param string $topic        e.g. "contest_session.42" or "radio.5"
 	 * @param int    $ttl_seconds  Default 24h
 	 */
-	public function create_token(string $topic, int $ttl_seconds = 86400): string {
+	public function create_token(string $topic, $ttl_seconds = null): string {
 		if ($this->secret === '') {
 			return '';
+		}
+
+		if ($ttl_seconds === null) {
+			$ttl_seconds = $this->token_expiration;
 		}
 
 		$CI =& get_instance();
@@ -163,6 +172,99 @@ class Worker {
 		$encoded = bin2hex(json_encode($claims));
 		$sig     = hash_hmac('sha256', $encoded, $this->secret);
 		return $encoded . '.' . $sig;
+	}
+
+	/**
+	 * Live status of the worker cluster, fanned out to every configured node's
+	 * /internal/status endpoint. Reused by the debug page and the statistics
+	 * API so the fan-out lives in one place.
+	 *
+	 * @return array {
+	 *   enabled: bool,
+	 *   vip: string|null,
+	 *   nodes_total: int,
+	 *   nodes_alive: int,
+	 *   active_topics: int|null,       // cluster sum, null when no node answered
+	 *   connected_clients: int|null,   // cluster sum, null when no node answered
+	 *   nodes: array<int, array{url,alive,version,active_topics,connected_clients,uptime}>
+	 * }
+	 */
+	public function status(): array {
+		$CI =& get_instance();
+		$vip_url = rtrim((string) $CI->config->item('worker_vip', 'worker'), '/');
+
+		$result = [
+			'enabled'           => $this->enabled,
+			'vip'               => $vip_url !== '' ? $vip_url : null,
+			'nodes_total'       => 0,
+			'nodes_alive'       => 0,
+			'active_topics'     => null,
+			'connected_clients' => null,
+			'nodes'             => [],
+		];
+
+		if (!$this->enabled) {
+			return $result;
+		}
+
+		$urls_cfg = $CI->config->item('worker_urls', 'worker');
+		$urls = is_array($urls_cfg) ? array_map(fn($u) => rtrim($u, '/'), $urls_cfg) : [];
+		if (empty($urls) && $this->url !== '') {
+			$urls = [$this->url];
+		}
+		$result['nodes_total'] = count($urls);
+
+		$topics = 0;
+		$clients = 0;
+		$have_metrics = false;
+		foreach ($urls as $url) {
+			$node = $this->fetch_node_status($url);
+			if ($node['alive']) {
+				$result['nodes_alive']++;
+			}
+			if ($node['active_topics'] !== null) {
+				$topics += (int) $node['active_topics'];
+				$have_metrics = true;
+			}
+			if ($node['connected_clients'] !== null) {
+				$clients += (int) $node['connected_clients'];
+				$have_metrics = true;
+			}
+			$result['nodes'][] = $node;
+		}
+		if ($have_metrics) {
+			$result['active_topics']     = $topics;
+			$result['connected_clients'] = $clients;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Query a single worker node's /internal/status. Never throws: an
+	 * unreachable node is reported as alive=false with null metrics.
+	 */
+	private function fetch_node_status(string $url): array {
+		$ch = curl_init($url . '/internal/status');
+		curl_setopt_array($ch, [
+			CURLOPT_RETURNTRANSFER    => true,
+			CURLOPT_CONNECTTIMEOUT_MS => 300,
+			CURLOPT_TIMEOUT_MS        => 800,
+			CURLOPT_HTTPHEADER        => ['X-Worker-Secret: ' . $this->secret],
+		]);
+		$raw       = curl_exec($ch);
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+		$stats = ($http_code === 200 && $raw) ? json_decode($raw, true) : null;
+
+		return [
+			'url'               => $url,
+			'alive'             => $http_code === 200,
+			'version'           => $stats['version']           ?? null,
+			'active_topics'     => $stats['active_topics']     ?? null,
+			'connected_clients' => $stats['connected_clients'] ?? null,
+			'uptime'            => $stats['uptime']            ?? null,
+		];
 	}
 
 	/**
@@ -193,7 +295,6 @@ class Worker {
 		curl_exec($ch);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$curl_err  = curl_error($ch);
-		curl_close($ch);
 
 		if ($curl_err !== '') {
 			log_message('error', 'Worker: POST ' . $path . ' failed: ' . $curl_err);

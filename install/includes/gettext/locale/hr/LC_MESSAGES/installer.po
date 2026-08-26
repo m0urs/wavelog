@@ -9,8 +9,8 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: translations@wavelog.org\n"
-"POT-Creation-Date: 2026-06-14 15:06+0000\n"
-"PO-Revision-Date: 2026-06-20 17:33+0000\n"
+"POT-Creation-Date: 2026-07-29 15:45+0000\n"
+"PO-Revision-Date: 2026-08-12 05:07+0000\n"
 "Last-Translator: marin <wavelog@marin.fyi>\n"
 "Language-Team: Croatian <https://translate.wavelog.org/projects/wavelog/"
 "installer/hr/>\n"
@@ -116,7 +116,7 @@ msgstr "Portugalski"
 
 #: install/includes/interface_assets/footer.php:81
 msgid "Romanian"
-msgstr ""
+msgstr "Rumunjski"
 
 #: install/includes/interface_assets/footer.php:82
 msgid "Russian"
@@ -128,11 +128,11 @@ msgstr "Srpski"
 
 #: install/includes/interface_assets/footer.php:84
 msgid "Slovak"
-msgstr ""
+msgstr "Slovački"
 
 #: install/includes/interface_assets/footer.php:85
 msgid "Slovenian"
-msgstr ""
+msgstr "Slovenski"
 
 #: install/includes/interface_assets/footer.php:86
 msgid "Spanish"
@@ -148,7 +148,7 @@ msgstr "Turski"
 
 #: install/includes/interface_assets/footer.php:89
 msgid "Ukrainian"
-msgstr ""
+msgstr "Ukrajinski"
 
 #: install/includes/interface_assets/header.php:94
 msgid "Install | Wavelog"
@@ -156,7 +156,7 @@ msgstr "Instaliraj | Wavelog"
 
 #: install/index.php:54
 msgid "1. Welcome"
-msgstr ""
+msgstr "1. Dobrodošli"
 
 #: install/index.php:57
 msgid "2. Pre Checks"
@@ -164,23 +164,23 @@ msgstr ""
 
 #: install/index.php:60
 msgid "3. Configuration"
-msgstr ""
+msgstr "3. Konfiguracija"
 
 #: install/index.php:63
 msgid "4. Database"
-msgstr ""
+msgstr "4. Baza podataka"
 
 #: install/index.php:66
 msgid "5. First User"
-msgstr ""
+msgstr "5. Prvi korisnik"
 
 #: install/index.php:69
 msgid "6. Finish"
-msgstr ""
+msgstr "6. Kraj"
 
 #: install/index.php:87
 msgid "Welcome to the Wavelog Installer"
-msgstr ""
+msgstr "Dobrodošli u Wavelog installer"
 
 #: install/index.php:88
 msgid ""
@@ -703,75 +703,75 @@ msgstr ""
 msgid "Please install the required modules and restart the webserver."
 msgstr ""
 
-#: install/run.php:22
+#: install/run.php:30
 msgid "Installation"
 msgstr ""
 
-#: install/run.php:24
+#: install/run.php:32
 msgid "Please wait..."
 msgstr ""
 
-#: install/run.php:27
+#: install/run.php:35
 msgid "Copy config.php to application/config/"
 msgstr ""
 
-#: install/run.php:30
+#: install/run.php:38
 msgid "Copy database.php to application/config/"
 msgstr ""
 
-#: install/run.php:33
+#: install/run.php:41
 msgid "Creating database tables"
 msgstr ""
 
-#: install/run.php:36
+#: install/run.php:44
 msgid "Running database migrations"
 msgstr ""
 
-#: install/run.php:39
+#: install/run.php:47
 msgid "Updating DXCC data"
 msgstr ""
 
-#: install/run.php:47
+#: install/run.php:55
 msgid "Lock the installer"
 msgstr ""
 
-#: install/run.php:51
+#: install/run.php:59
 #, php-format
 msgid "All install steps went through. Redirect to user login in %s seconds..."
 msgstr ""
 
-#: install/run.php:54
+#: install/run.php:62
 msgid "Done. Go to the user login ->"
 msgstr ""
 
-#: install/run.php:58 install/run.php:144
+#: install/run.php:66 install/run.php:168
 msgid "Show detailled debug log"
 msgstr ""
 
-#: install/run.php:146
+#: install/run.php:170
 msgid "Hide detailled debug log"
 msgstr ""
 
-#: install/run.php:174
+#: install/run.php:198
 msgid "Could not create application/config/config.php"
 msgstr ""
 
-#: install/run.php:209
+#: install/run.php:233
 msgid "Could not create application/config/database.php"
 msgstr ""
 
-#: install/run.php:243
+#: install/run.php:267
 msgid "Could not create database tables"
 msgstr ""
 
-#: install/run.php:273
+#: install/run.php:297
 msgid "Could not run database migrations"
 msgstr ""
 
-#: install/run.php:301
+#: install/run.php:350
 msgid "Could not update DXCC data"
 msgstr ""
 
-#: install/run.php:333
+#: install/run.php:382
 msgid "Could not create install/.lock file"
 msgstr ""

@@ -55,7 +55,7 @@
 						<?php $current_date = date('Y-m-d H:i:s'); ?>
 						<?php foreach ($lotw_cert_results->result() as $row) { ?>
 							<tr>
-								<td><?php echo $row->callsign; ?></td>
+								<td><span class="callsign"><?php echo $row->callsign; ?></span></td>
 								<td><?php echo $row->cert_dxcc == '' ? '- NONE -' : ucfirst($row->cert_dxcc); if ($row->cert_dxcc_end != NULL) { echo ' <span class="badge text-bg-danger">'.__("Deleted DXCC").'</span>'; } ?></td>
 								<td><?php
 									if (isset($row->qso_start_date)) {
@@ -171,14 +171,27 @@
 
 		<div class="card-body">
             		<?php if (($next_run ?? '') != '') { echo "<p>".__("The next automatic sync with LoTW will happen at: ").$next_run."</p>"; } ?>
-			<button class="btn btn-outline-success" hx-on:click="document.getElementById('lotw_manual_results').innerHTML = '';" hx-get="<?php echo site_url('lotw/lotw_upload'); ?>" hx-indicator="#lotw-sync-running" hx-target="#lotw_manual_results">
+			<button id="lotw-sync-btn" class="btn btn-outline-success">
             <?= __("Manual Sync"); ?>
 			</button>
-			<span style="margin-left: 10px;" id="lotw-sync-running" class="htmx-indicator"> <?php echo __("running..."); ?></span>
+			<span style="margin-left: 10px;" id="lotw-sync-running" class="sync-indicator"> <?php echo __("running..."); ?></span>
 
 			<div id="lotw_manual_results"></div>
 		</div>
 	</div>
+	<script>
+		// Manual LoTW sync: clear old results, show indicator, load result (was htmx button).
+		document.addEventListener('DOMContentLoaded', function () {
+			document.getElementById('lotw-sync-btn').addEventListener('click', function () {
+				const results = document.getElementById('lotw_manual_results');
+				const ind = document.getElementById('lotw-sync-running');
+				results.innerHTML = '';
+				ind.classList.add('active');
+				wlLoadInto('<?php echo site_url('lotw/lotw_upload'); ?>', results)
+					.finally(() => ind.classList.remove('active'));
+			});
+		});
+	</script>
 	<?php } ?>
 
 </div>

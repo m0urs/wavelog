@@ -23,7 +23,7 @@ class Lotw extends CI_Controller {
 		parent::__construct();
 		$this->load->helper(array('form', 'url'));
 
-		if (ENVIRONMENT == 'maintenance' && $this->session->userdata('user_id') == '') {
+		if (MAINTENANCE_MODE && $this->session->userdata('user_id') == '') {
 			echo __("Maintenance Mode is active. Try again later.")."\n";
 			redirect('user/login');
 		}
@@ -40,7 +40,6 @@ class Lotw extends CI_Controller {
 	*/
 	public function index() {
 		$this->load->library('Permissions');
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2) || !clubaccess_check(9)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		// Load required models for page generation
@@ -85,7 +84,6 @@ class Lotw extends CI_Controller {
 	|
 	*/
 	public function cert_upload() {
-		$this->load->model('user_model');
 		$this->load->model('dxcc');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
@@ -111,7 +109,6 @@ class Lotw extends CI_Controller {
 	|
 	*/
 	public function do_cert_upload() {
-		$this->load->model('user_model');
 		$this->load->model('dxcc');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
@@ -186,8 +183,12 @@ class Lotw extends CI_Controller {
 	*/
 	public function lotw_upload() {
 
-		$this->load->model('user_model');
-		$this->user_model->authorize(2);
+		$this->load->helper('cronauth');
+		if (!cronauth_allowed(3)) {
+			// return a 403
+			$this->output->set_status_header(403);
+			exit();
+		}
 
 		// set the last run in cron table for the correct cron id
 		$this->load->model('cron_model');
@@ -196,7 +197,7 @@ class Lotw extends CI_Controller {
 		// Get Station Profile Data
 		$this->load->model('Stations');
 
-		if ($this->user_model->authorize(2)) {
+		if ($this->user_model->authorize(3)) {
 			if (!($this->config->item('disable_manual_lotw'))) {
 				$station_profiles = $this->Stations->all_of_user($this->session->userdata('user_id'));
 				$sync_user_id=$this->session->userdata('user_id');
@@ -278,7 +279,7 @@ class Lotw extends CI_Controller {
 				// Nothing to upload
 				if(empty($data['qsos']->result())){
 					if ($this->user_model->authorize(2)) {	// Only be verbose if we have a session
-						echo str_replace("0", "&Oslash;", $station_profile->station_callsign)." (".$station_profile->station_profile_name."): No QSOs to upload.<br>";
+						echo '<span class="callsign">'.$station_profile->station_callsign.'</span> ('.$station_profile->station_profile_name.'): No QSOs to upload.<br>';
 					}
 					continue;
 				}
@@ -406,7 +407,6 @@ class Lotw extends CI_Controller {
 	|
 	*/
     public function delete_cert($cert_id) {
-    	$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
     	$this->load->model('Lotw_model');
@@ -429,7 +429,6 @@ class Lotw extends CI_Controller {
 	|
 	*/
 	public function decrypt_key($file, $password = "") {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) { $this->session->set_flashdata('error', __("You're not allowed to do that!")); redirect('dashboard'); }
 
 		$results = array();
@@ -576,7 +575,7 @@ class Lotw extends CI_Controller {
 			if($status[0] == "Found") {
 				$qso_id4lotw=$status[1];
 
-				$call = str_replace("0", "&Oslash;", $record['call']);
+				$call = html_escape($record['call']);
 
 				if (isset($record['state'])) {
 					$state = $record['state'];
@@ -638,25 +637,25 @@ class Lotw extends CI_Controller {
 				$lotw_status = $this->logbook_model->lotw_update($time_on, $record['call'], $record['band'], $qsl_date, $record['qsl_rcvd'], $state, $qsl_gridsquare, $qsl_vucc_grids, $iota, $cnty, $cqz, $ituz, $record['station_callsign'],$qso_id4lotw, $station_ids, $dxcc, $country, $ant_path);
 
 				$table .= "<tr>";
-				$table .= "<td>".$record['station_callsign']."</td>";
+				$table .= "<td>".html_escape($record['station_callsign'])."</td>";
 				$table .= "<td>".$time_on."</td>";
-				$table .= "<td><a id=\"view_lotw_qso\" href=\"javascript:displayQso(".$status[1].")\">".$call."</a></td>";
-				$table .= "<td>".$record['mode']."</td>";
-				$table .= "<td>".$record['qsl_rcvd']."</td>";
+				$table .= "<td><a id=\"view_lotw_qso\" href=\"javascript:displayQso(".(int) $status[1].")\">".$call."</a></td>";
+				$table .= "<td>".html_escape($record['mode'])."</td>";
+				$table .= "<td>".html_escape($record['qsl_rcvd'])."</td>";
 				$table .= "<td>".$qsl_date."</td>";
-				$table .= "<td>".$state."</td>";
-				$table .= "<td>".($qsl_gridsquare != '' ? $qsl_gridsquare : $qsl_vucc_grids)."</td>";
-				$table .= "<td>".$iota."</td>";
+				$table .= "<td>".html_escape($state)."</td>";
+				$table .= "<td>".html_escape($qsl_gridsquare != '' ? $qsl_gridsquare : $qsl_vucc_grids)."</td>";
+				$table .= "<td>".html_escape($iota)."</td>";
 				$table .= "<td>QSO Record: ".$status[0]."</td>";
 				$table .= "<td>LoTW Record: ".$lotw_status."</td>";
 				$table .= "</tr>";
 			} else {
 				$table .= "<tr>";
-				$table .= "<td>".$record['station_callsign']."</td>";
+				$table .= "<td>".html_escape($record['station_callsign'])."</td>";
 				$table .= "<td>".$time_on."</td>";
-				$table .= "<td>".$record['call']."</td>";
-				$table .= "<td>".$record['mode']."</td>";
-				$table .= "<td>".$record['qsl_rcvd']."</td>";
+				$table .= "<td>".html_escape($record['call'])."</td>";
+				$table .= "<td>".html_escape($record['mode'])."</td>";
+				$table .= "<td>".html_escape($record['qsl_rcvd'])."</td>";
 				$table .= "<td></td>";
 				$table .= "<td></td>";
 				$table .= "<td></td>";
@@ -675,7 +674,6 @@ class Lotw extends CI_Controller {
 
 		unlink($filepath);
 
-		$this->load->model('user_model');
 		if ($this->user_model->authorize(2)) {	// Only Output results if authorized User
 			if(isset($data['lotw_table_headers'])) {
 				if($display_view == TRUE) {
@@ -713,7 +711,6 @@ class Lotw extends CI_Controller {
 	|
 	*/
 	function lotw_download($sync_user_id = null) {
-		$this->load->model('user_model');
 		$this->load->model('logbook_model');
 		$this->load->model('Stations');
 
@@ -742,7 +739,7 @@ class Lotw extends CI_Controller {
 
 					$config['upload_path'] = './uploads/';
 					$file = $config['upload_path'] . 'lotwreport_download_'.$user->user_id.'_auto.adi';
-					if (file_exists($file) && ! is_writable($file)) {
+					if (file_exists($file) && ! is_writable($file) && ! @unlink($file)) {
 						$result = "Temporary download file ".$file." is not writable. Aborting!";
 						continue;
 					}
@@ -773,7 +770,7 @@ class Lotw extends CI_Controller {
 						$result = "LoTW download failed for user ".$user->user_lotw_name.": unexpected HTTP status ".$http_code.".";
 						log_message('error', 'LoTW download failed for user '.$user->user_name.': unexpected HTTP status '.$http_code);
 						continue;
-					} else if(str_contains(substr($content,0 , 2000),"Username/password incorrect</I>")) {
+					} else if(str_contains(substr($content,0 , 6000),"Username/password incorrect</I>")) {
 						$result = "LoTW download failed for user ".$user->user_lotw_name.": Username/password incorrect";
 						log_message('error', 'LoTW download failed for user '.$user->user_name.': Username/password incorrect');
 						if ($this->Lotw_model->remove_lotw_credentials($user->user_id)) {
@@ -782,20 +779,24 @@ class Lotw extends CI_Controller {
 							log_message('error', 'Deleting LoTW credentials for user '.$user->user_name.' failed');
 						}
 						continue;
-					} else if (str_contains(substr($content, 0, 2000),"Page Request Limit!</B>")) {
+					} else if (str_contains(substr($content, 0, 6000),"Page Request Limit!</B>")) {
 						$result = "LoTW download hit a rate limit for user ".$user->user_lotw_name;
 						log_message('error', 'LoTW download hit a rate limit for user '.$user->user_name);
 						continue;
 					}
-					file_put_contents($file, $content);
-					if (file_get_contents($file, false, null, 0, 39) != "ARRL Logbook of the World Status Report") {
+					if (substr($content, 0, 39) != "ARRL Logbook of the World Status Report") {
 						$result = "Downloaded LoTW report for user ".$user->user_lotw_name." is invalid. Check your credentials.";
 						log_message('error', 'Downloaded LoTW report is invalid for user '.$user->user_name);
 						continue;
 					}
+					file_put_contents($file, $content);
 
 					ini_set('memory_limit', '-1');
-					$result = $this->loadFromFile($file, $station_ids, false);
+					try {
+						$result = $this->loadFromFile($file, $station_ids, false);
+					} finally {
+						@unlink($file);
+					}
 				}
 				return $result;
 			} else {
@@ -815,7 +816,7 @@ class Lotw extends CI_Controller {
 
 				$config['upload_path'] = './uploads/';
 				$file = $config['upload_path'] . 'lotwreport_download_'.$user->user_id.'_auto.adi';
-				if (file_exists($file) && ! is_writable($file)) {
+				if (file_exists($file) && ! is_writable($file) && ! @unlink($file)) {
 					log_message("Error","LoTW Multidownload: UID: ".$user->user_id." - Temporary download file ".$file." is not writable. Aborting!");
 					continue;
 				}
@@ -885,23 +886,27 @@ class Lotw extends CI_Controller {
 
 						if ($http_code !== 200) {
 							log_message('error', 'LoTW download failed for user '.$user->user_name.': unexpected HTTP status '.$http_code);
-						} else if (str_contains(substr($content, 0, 2000), "Username/password incorrect</I>")) {
+						} else if (str_contains(substr($content, 0, 6000), "Username/password incorrect</I>")) {
 							log_message('error', 'LoTW download failed for user '.$user->user_name.': Username/password incorrect');
 							if ($this->Lotw_model->remove_lotw_credentials($user->user_id)) {
 								log_message('error', 'LoTW credentials deleted for user '.$user->user_name);
 							} else {
 								log_message('error', 'Deleting LoTW credentials for user '.$user->user_name.' failed');
 							}
-						} else if (str_contains(substr($content, 0, 2000), "Page Request Limit!</B>")) {
+						} else if (str_contains(substr($content, 0, 6000), "Page Request Limit!</B>")) {
 							log_message('error', 'LoTW download hit a rate limit for user '.$user->user_name);
 						} else {
-							file_put_contents($file, $content);
-							if (file_get_contents($file, false, null, 0, 39) != "ARRL Logbook of the World Status Report") {
+							if (substr($content, 0, 39) != "ARRL Logbook of the World Status Report") {
 								log_message('error', 'Downloaded LoTW report is invalid for user '.$user->user_name);
 							} else {
+								file_put_contents($file, $content);
 								ini_set('memory_limit', '-1');
 								log_message('debug', 'LoTW parallel download passing to loadFromFile for UID '.$user->user_id.' ('.$user->user_lotw_name.')');
-								$this->loadFromFile($file, $station_ids, false);
+								try {
+									$this->loadFromFile($file, $station_ids, false);
+								} finally {
+									@unlink($file);
+								}
 							}
 						}
 					}
@@ -934,7 +939,6 @@ class Lotw extends CI_Controller {
 	}
 
 	public function check_lotw_credentials () {
-		$this->load->model('user_model');
 		if(!$this->user_model->authorize(2)) {
 			$this->session->set_flashdata('error', __("You're not allowed to do that!"));
 			redirect('dashboard');
@@ -1020,7 +1024,6 @@ class Lotw extends CI_Controller {
 	}
 
 	public function import() {	// Is only called via frontend. Cron uses "upload". within download the download is called
-		$this->load->model('user_model');
 		$this->load->model('Stations');
 		if(!$this->user_model->authorize(2)) {
 			$this->session->set_flashdata('error', __("You're not allowed to do that!"));
@@ -1094,6 +1097,11 @@ class Lotw extends CI_Controller {
 					print "LoTW download failed for user ".$data['user_lotw_name'].": unexpected HTTP status ".$http_code.".";
 				} else if (str_contains($content,"Username/password incorrect</I>")) {
 					print "LoTW download failed for user ".$data['user_lotw_name'].": Username/password incorrect";
+				} else if (str_contains($content,"Page Request Limit!</B>")) {
+					print "LoTW download hit a rate limit for user ".$data['user_lotw_name'];
+				} else if (substr($content, 0, 39) != "ARRL Logbook of the World Status Report") {
+					print "Downloaded LoTW report for user ".$data['user_lotw_name']." is invalid. Check your credentials.";
+					log_message('error', 'Downloaded LoTW report is invalid for user '.$data['user_lotw_name']);
 				} else {
 					file_put_contents($file, $content);
 					ini_set('memory_limit', '-1');

@@ -62,7 +62,14 @@
 
 /* QSO log table typography */
 #qso-tbody {
-	font-family: 'Courier New', monospace;
+	font-family: 'JetBrains Mono', 'Consolas', 'SF Mono', monospace;
+	font-variant-numeric: slashed-zero;
+}
+
+/* Edit-mode row: .form-select-sm has no min-height (unlike .form-control-sm), so the
+   p-0 band/mode dropdowns render shorter than the inputs. Match the input min-height. */
+#qso-tbody select.form-select-sm {
+	min-height: calc(1.5em + 0.5rem + calc(var(--bs-border-width) * 2));
 }
 
 #qso-tbody td.callsign-col,
@@ -84,4 +91,11 @@
 #qso-form .col-field-wide {
 	flex: 2 1 0;
 	min-width: 100px;
+}
+
+#qso-serial-sent.serial-unclaimed {
+	color: var(--bs-danger, #dc3545);
+}
+#qso-serial-sent.serial-claimed {
+	color: var(--bs-success, #198754);
 }
