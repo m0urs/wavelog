@@ -236,6 +236,7 @@ $('#stationProfile').on('change', function () {
 	});
 	// [eQSL default msg] change value on change station profle //
 	qso_set_eqsl_qslmsg(stationProfile, false, '.qso_panel');
+	panMap(stationProfile);
 });
 
 // [eQSL default msg] change value on clic //
@@ -384,7 +385,13 @@ $("#qso_input").off('submit').on('submit', function (e) {
 							.replace('%s', contactCallsign)
 							.replace('%s', operatorCallsign);
 
-						showToast(lang_general_word_success, successMessage, 'bg-success text-white', 5000);
+					showToast(lang_general_word_success, successMessage, 'bg-success text-white', 5000);
+
+					// Show realtime export failures (QRZ, ClubLog, HRDLog) if any
+					if (result.export_errors?.length) {
+						var failedExports = result.export_errors.map(e => e.provider + ': ' + e.message).join('; ');
+						showToast(lang_general_word_warning, lang_qso_realtime_export_failed.replace('%s', failedExports), 'bg-warning text-dark', 8000);
+					}
 
 						// Send QSO data via WebSocket if CAT is enabled via WebSocket
 						if (typeof sendQSOViaWebSocket === 'function') {
@@ -725,10 +732,7 @@ $(document).on("click", "#fav_del", function (event) {
 });
 
 $(document).on("click", "#fav_recall", function (event) {
-	$('#sat_name').val(favs[this.innerText].sat_name);
-	if (favs[this.innerText].sat_name) {
-		$("#sat_name").change();
-	}
+	$('#sat_name').val(favs[this.innerText].sat_name).trigger('change');
 	$('#sat_mode').val(favs[this.innerText].sat_mode);
 	$('#band_rx').val(favs[this.innerText].band_rx);
 	$('#band').val(favs[this.innerText].band);
@@ -1017,7 +1021,8 @@ if (qso_manual == 0) {
 			setTimeout(() => {
 				if (ev.data.frequency != null) {
 					$('#frequency').val(ev.data.frequency).trigger("change");
-					$("#band").val(frequencyToBand(ev.data.frequency));
+					var bmBand = frequencyToBand(ev.data.frequency);
+					if (bmBand) $("#band").val(bmBand).trigger('change');
 				}
 				if (ev.data.frequency_rx != "") {
 					$('#frequency_rx').val(ev.data.frequency_rx);
@@ -1030,9 +1035,11 @@ if (qso_manual == 0) {
 
 				// Clear satellite/propagation fields when clicking bandmap spots (HF DX spots)
 				$("#selectPropagation").val("");
-				$("#sat_name").val("");
 				$("#sat_mode").val("");
-				stop_az_ele_ticker();    // Stop satellite position ticker if running
+				if ($("#sat_name").val() != "") {
+					$("#sat_name").val("");
+					stop_az_ele_ticker();
+				}
 
 				// Store sequence for validation in populatePendingReferences
 				$("#callsign").data('expected-refs-seq', seq);
@@ -1582,7 +1589,7 @@ $("#callsign").on("focusout", function () {
 		const stationProfile = $('#stationProfile').val();
 
 		find_callsign = find_callsign.replace(/\//g, "-");
-		const url = `${base_url}index.php/logbook/json/${find_callsign}/${json_band}/${json_mode}/${stationProfile}/${startDate}/${last_qsos_count}`;
+		const url = `${base_url}index.php/logbook/json/${find_callsign}/${json_band}/${json_mode}/${stationProfile}/${startDate}/${last_qsos_count}?ctx=live`;
 
 		// Replace / in a callsign with - to stop urls breaking
 		lookupCall = $.getJSON(url, async function (result) {
@@ -2743,8 +2750,8 @@ $('.mode').on('change', function () {
 
 /* Calculate Frequency */
 /* on band change */
-$('#band').on('change', function () {
-	if ($('#radio').val() == 0) {
+$('#band').on('change', function (e) {
+	if (frequencyToBand($('#frequency').val()) != $(this).val()) {
 		$.get(base_url + 'index.php/qso/band_to_freq/' + $(this).val() + '/' + $('.mode').val(), function (result) {
 			$('#frequency').val(result).trigger("change");
 
@@ -2764,14 +2771,19 @@ $('#band').on('change', function () {
 			}
 		});
 	}
-	$('#frequency_rx').val("");
-	$('#band_rx').val("");
-	$("#selectPropagation").val("");
-	$("#sat_name").val("");
-	$("#sat_mode").val("");
+	// Only wipe sat/propagation info when the user switches bands manually.
+	// Programmatic changes (frequency entry, CAT, bandmap) must not discard that data.
+	if (e.originalEvent) {
+		$('#frequency_rx').val("");
+		$('#band_rx').val("");
+		var had_sat = $("#sat_name").val() != "";
+		$("#selectPropagation").val("");
+		$("#sat_name").val("");
+		$("#sat_mode").val("");
+		if (had_sat) { stop_az_ele_ticker(); }
+	}
 	set_qrg();
 	$("#callsign").blur();
-	stop_az_ele_ticker();
 });
 
 /* On Key up Calculate Bearing and Distance */
@@ -2841,16 +2853,14 @@ $("#locator").on("input focus", function () {
 					// Set Map to Lat/Long
 					result = JSON.parse(data);
 					markers.clearLayers();
-					if (typeof result[0] !== "undefined" && typeof result[1] !== "undefined") {
+					if (typeof result[0] !== "undefined" && typeof result[1] !== "undefined" && $('#locator').val().toUpperCase() == qra) {
 						var redIcon = L.icon({
 							iconUrl: icon_dot_url,
 							iconSize: [18, 18], // size of the icon
 						});
 
 						var marker = L.marker([result[0], result[1]], { icon: redIcon });
-						mymap.setZoom(8);
-						mymap.panTo([result[0], result[1]]);
-						mymap.setView([result[0], result[1]], 8);
+						mymap.setView([result[0], result[1]], Math.max(mymap.getZoom(), 8));
 						markers.addLayer(marker).addTo(mymap);
 						bannerText = "📡 "+lang_qso_location_is_fetched_from_provided_gridsquare+": " + qra.toUpperCase();
 						window.mapBanner.addTo(mymap);
