@@ -907,7 +907,9 @@ function showActivatorsMap(call, count, grids, grid_color) {
         container._leaflet_id = null;
     }
 
-    const map = new L.map('mapactivators').setView([30, 0], 1.5);
+    const map = new L.map('mapactivators', {
+        fullscreenControl: true,
+    }).setView([30, 0], 1.5);
 
     var grid_four = grids.split(', ');
 
@@ -2383,7 +2385,7 @@ $('#sats').change(function(){
     </script>
     <?php if ($this->uri->segment(1) == "qsl") {
         $qsl_eqsl_table = '.qsltable';
-        $qsl_eqsl_info = 'true';
+        $qsl_eqsl_info = 'false'; // Server-side pagination, hide DataTables info
     } else if ($this->uri->segment(1) == "generic_qsl") {
         $qsl_eqsl_table = '.qsltable';
         $qsl_eqsl_info = 'true';
