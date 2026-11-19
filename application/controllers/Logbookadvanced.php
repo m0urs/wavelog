@@ -171,16 +171,28 @@ class Logbookadvanced extends CI_Controller {
 		);
 	}
 
+	/**
+	 * Run the advanced logbook search and return the matching QSOs as JSON.
+	 * For duplicate searches, each QSO gets an 'isdupe' flag marking the
+	 * newer row of a dupe pair (candidate for deletion, keep-oldest).
+	 *
+	 * @return void Prints a JSON array of QSO objects
+	 */
 	public function search() {
 		$this->load->model('logbookadvanced_model');
 
 		$searchCriteria = $this->mapParameters();
+		$results = $this->logbookadvanced_model->searchQsos($searchCriteria);
+		$dupeLaterIds = ($searchCriteria['dupes'] ?? '') !== '' ? $this->logbookadvanced_model->getDupeLaterIds() : [];
 		$qsos = [];
 
-		foreach ($this->logbookadvanced_model->searchQsos($searchCriteria) as $qso) {
+		foreach ($results as $qso) {
 			$qsoArray = $qso->toArray();
 			$flag = $this->dxccflag->get($qso->getDXCCId());
 			$qsoArray['flag'] = $this->flag_html($flag);
+			if ($dupeLaterIds !== []) {
+				$qsoArray['isdupe'] = in_array($qso->getQsoID(), $dupeLaterIds);
+			}
 			$qsos[] = $qsoArray;
 		}
 
@@ -442,6 +454,8 @@ class Logbookadvanced extends CI_Controller {
 				return;
 		}
 
+		// Reverse array so that most recent QSOs get plotted on top of the map
+		$qsos = array_reverse($qsos);
 		$mappedcoordinates = array();
 		foreach ($qsos as $qso) {
 			if ($this->isValidMaidenheadGrid($qso['station_gridsquare']) || empty($qso['station_gridsquare'])) {
@@ -487,6 +501,18 @@ class Logbookadvanced extends CI_Controller {
 		return false;
 	}
 
+	/**
+	 * Build the map payload for a QSO with known gridsquare.
+	 *
+	 * @param array $qso               QSO row (must contain COL_ANT_PATH)
+	 * @param string $locator1         Station (own) gridsquare
+	 * @param string $locator2         DX gridsquare
+	 * @param string $measurement_base Unit of measurement ('K', 'M' or 'N')
+	 * @param string $var_dist         Suffix string for distances
+	 * @param string $custom_date_format Date format for the datetime field
+	 *
+	 * @return array Mapped QSO data for the Leaflet map (incl. antpath)
+	 */
 	public function calculate($qso, $locator1, $locator2, $measurement_base, $var_dist, $custom_date_format) {
 		if(!$this->load->is_loaded('Qra')) {
 			$this->load->library('Qra');
@@ -494,6 +520,7 @@ class Logbookadvanced extends CI_Controller {
 
 		$this->load->model('logbook_model');
 
+		$data['antpath'] = $qso['COL_ANT_PATH'] ?? null;
 		$data['callsign'] = $qso['COL_CALL'];
 		$data['band'] = $qso['COL_BAND'];
 		$data['mode'] = $qso['COL_MODE'];
@@ -526,12 +553,27 @@ class Logbookadvanced extends CI_Controller {
 		return $data;
 	}
 
+	/**
+	 * Build the map payload for a QSO with given lat/long (no gridsquare).
+	 *
+	 * @param array $qso               QSO row (must contain COL_ANT_PATH)
+	 * @param float $lat                DX latitude
+	 * @param float $long               DX longitude
+	 * @param string $mygrid            Station (own) gridsquare
+	 * @param string $measurement_base Unit of measurement ('K', 'M' or 'N')
+	 * @param string $var_dist         Suffix string for distances
+	 * @param string $custom_date_format Date format for the datetime field
+	 *
+	 * @return array Mapped QSO data for the Leaflet map (incl. antpath)
+	 */
 	public function calculateCoordinates($qso, $lat, $long, $mygrid, $measurement_base, $var_dist, $custom_date_format) {
 		if(!$this->load->is_loaded('Qra')) {
 			$this->load->library('Qra');
 		}
 
 		$this->load->model('logbook_model');
+
+		$data['antpath'] = $qso['COL_ANT_PATH'] ?? null;
 
 		if (!empty($mygrid)) {
 			$latlng1 = $this->qra->qra2latlong($mygrid);
